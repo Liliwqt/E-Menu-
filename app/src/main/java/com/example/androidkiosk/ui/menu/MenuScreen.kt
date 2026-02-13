@@ -81,12 +81,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-/**
- * Main entry point for the Menu Screen.
- *
- * Displays the weather widget, best-sellers carousel, and category rows.
- * Item detail, cart, and checkout are shown as overlays.
- */
 @Composable
 fun MenuScreen(
     viewModel: MenuViewModel,
@@ -110,7 +104,6 @@ fun MenuScreen(
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Main content with optional blur
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -146,8 +139,6 @@ fun MenuScreen(
                 }
             }
         }
-
-        // Cart FAB
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -191,8 +182,6 @@ fun MenuScreen(
                 }
             }
         }
-
-        // Item detail overlay
         if (selectedItem != null) {
             ItemDetailOverlay(
                 item = selectedItem!!,
@@ -203,8 +192,6 @@ fun MenuScreen(
                 }
             )
         }
-        
-        // Cart overlay
         if (showCart) {
             CartOverlay(
                 viewModel = viewModel,
@@ -215,8 +202,6 @@ fun MenuScreen(
                 }
             )
         }
-        
-        // Checkout overlay
         if (showCheckout) {
             CheckoutOverlay(
                 viewModel = viewModel,
@@ -227,9 +212,6 @@ fun MenuScreen(
     }
 }
 
-/**
- * Renders the main scrollable content of the menu.
- */
 @Composable
 private fun MenuContent(
     modifier: Modifier = Modifier,
@@ -274,10 +256,6 @@ private fun MenuContent(
     }
 }
 
-
-/**
- * Cart overlay with animated entry/exit
- */
 @Composable
 private fun CartOverlay(
     viewModel: MenuViewModel,
@@ -349,7 +327,6 @@ private fun CartOverlay(
                         .clickable(enabled = false) { },
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Header
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -366,8 +343,6 @@ private fun CartOverlay(
                                 Icon(Icons.Default.Close, contentDescription = "Close")
                             }
                         }
-
-                        // Items List
                         if (cartItems.isEmpty()) {
                             Box(
                                 modifier = Modifier
@@ -395,8 +370,6 @@ private fun CartOverlay(
                                 }
                             }
                         }
-
-                        // Footer / Summary
                         val total = cartItems.sumOf { it.menuItem.price * it.quantity }
 
                         Column(
@@ -515,9 +488,6 @@ private fun CartListItem(
     }
 }
 
-/**
- * Checkout overlay that displays order summary and confirmation
- */
 @Composable
 private fun CheckoutOverlay(
     viewModel: MenuViewModel,
@@ -550,7 +520,6 @@ private fun CheckoutOverlay(
             shape = RoundedCornerShape(0.dp),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Header
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -567,8 +536,6 @@ private fun CheckoutOverlay(
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
-
-                // Order Summary
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -592,8 +559,6 @@ private fun CheckoutOverlay(
                         }
                     }
                 }
-
-                // Footer / Total and Confirm
                 val total = cartItems.sumOf { it.menuItem.price * it.quantity }
 
                 Column(

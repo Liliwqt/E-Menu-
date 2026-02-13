@@ -14,9 +14,6 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
-/**
- * Hilt module providing Retrofit, OkHttp, and API service instances.
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {

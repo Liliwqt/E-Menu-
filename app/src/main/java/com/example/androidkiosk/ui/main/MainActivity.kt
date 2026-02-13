@@ -18,17 +18,6 @@ import com.example.androidkiosk.ui.navigation.AppNavHost
 import com.example.androidkiosk.ui.theme.AndroidKioskTheme
 import dagger.hilt.android.AndroidEntryPoint
 
-/**
- * MainActivity — Entry point of the app.
- *
- * Annotated with @AndroidEntryPoint to enable Hilt injection
- * into this Activity and its hosted Composables.
- *
- * Sets up:
- * - Immersive kiosk mode (hidden system bars, screen always on)
- * - Edge-to-edge display
- * - Navigation via [AppNavHost]
- */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

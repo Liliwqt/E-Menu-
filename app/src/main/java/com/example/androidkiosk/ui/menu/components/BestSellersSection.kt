@@ -37,9 +37,6 @@ import com.example.androidkiosk.R
 import com.example.androidkiosk.model.MenuItem
 import java.util.Locale
 
-/**
- * Displays a "Best Sellers" section with an infinite scrolling carousel.
- */
 @Composable
 fun BestSellersSection(
     items: List<MenuItem>,
@@ -102,9 +99,6 @@ fun BestSellersSection(
     }
 }
 
-/**
- * Visual representation of an item within the Best Sellers carousel.
- */
 @Composable
 private fun BestSellerCarouselItem(
     item: MenuItem,

@@ -58,10 +58,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-/**
- * Cart screen displayed as an animated overlay.
- * Accessed via Navigation from the menu screen.
- */
 @Composable
 fun CartScreen(
     viewModel: MenuViewModel,
@@ -133,7 +129,6 @@ fun CartScreen(
                         .clickable(enabled = false) { },
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Header
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -150,8 +145,6 @@ fun CartScreen(
                                 Icon(Icons.Default.Close, contentDescription = "Close")
                             }
                         }
-
-                        // Items List
                         if (cartItems.isEmpty()) {
                             Box(
                                 modifier = Modifier
@@ -179,8 +172,6 @@ fun CartScreen(
                                 }
                             }
                         }
-
-                        // Footer / Summary
                         val total = cartItems.sumOf { it.menuItem.price * it.quantity }
 
                         Column(

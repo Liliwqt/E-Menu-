@@ -1,14 +1,15 @@
 package com.example.androidkiosk.model
 
-/**
- * MenuItem - Data Model for Menu Items
- */
+import com.google.firebase.database.PropertyName
+
 data class MenuItem(
     val id: String = "",
     val name: String = "",
     val price: Double = 0.0,
     val imageUrl: String = "",
-    val available: Boolean = true
+    val available: Boolean = true,
+    @get:PropertyName("isBestSeller")
+    var isBestSeller: Boolean = false
 )
 
 data class CategoryWithItems(

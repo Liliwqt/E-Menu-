@@ -9,12 +9,6 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Production implementation of [WeatherRepository].
- *
- * Uses Retrofit to fetch weather data from the Open-Meteo API,
- * replacing the raw HttpURLConnection approach.
- */
 @Singleton
 class WeatherRepositoryImpl @Inject constructor(
     private val weatherApiService: WeatherApiService

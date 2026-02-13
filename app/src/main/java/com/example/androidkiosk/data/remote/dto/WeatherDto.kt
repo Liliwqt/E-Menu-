@@ -3,18 +3,6 @@ package com.example.androidkiosk.data.remote.dto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * DTOs for the Open-Meteo weather API response.
- *
- * Example response:
- * ```json
- * {
- *   "current": {
- *     "temperature_2m": 30.5
- *   }
- * }
- * ```
- */
 @Serializable
 data class OpenMeteoResponse(
     @SerialName("current")

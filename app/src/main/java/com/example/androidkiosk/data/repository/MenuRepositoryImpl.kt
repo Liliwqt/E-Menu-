@@ -17,19 +17,6 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Production implementation of [MenuRepository].
- *
- * Data flow:
- * 1. Firebase Realtime Database emits updates via [ValueEventListener]
- * 2. Data is written to Room (local cache)
- * 3. Room emits to the UI via Flow (single source of truth)
- *
- * This gives us:
- * - Real-time updates from Firebase
- * - Offline-first capability via Room cache
- * - Clean separation from the ViewModel
- */
 @Singleton
 class MenuRepositoryImpl @Inject constructor(
     private val database: FirebaseDatabase,
@@ -37,7 +24,6 @@ class MenuRepositoryImpl @Inject constructor(
 ) : MenuRepository {
 
     override fun observeCategories(): Flow<List<CategoryWithItems>> {
-        // Start listening to Firebase and syncing to Room
         syncFirebaseToRoom()
 
         return menuItemDao.getAllMenuItems().map { entities ->
@@ -58,15 +44,10 @@ class MenuRepositoryImpl @Inject constructor(
     }
 
     override suspend fun refresh() {
-        // Force re-sync from Firebase — the listener is already active,
-        // but we can clear local cache to force a fresh write.
         menuItemDao.clearAll()
     }
 
-    /**
-     * Sets up a Firebase listener that syncs data into Room.
-     * Uses callbackFlow internally; the side-effect writes to Room.
-     */
+    
     @OptIn(DelicateCoroutinesApi::class)
     private fun syncFirebaseToRoom() {
         val categoriesRef = database.getReference("categories")
@@ -92,7 +73,7 @@ class MenuRepositoryImpl @Inject constructor(
                                         imageUrl = item.imageUrl,
                                         available = item.available,
                                         categoryName = categoryName,
-                                        isBestSeller = categoryName == "Best Sellers"
+                                        isBestSeller = item.isBestSeller
                                     )
                                 )
                             }
@@ -101,8 +82,6 @@ class MenuRepositoryImpl @Inject constructor(
                         }
                     }
                 }
-
-                // Write to Room on a coroutine — fire and forget from the callback
                 kotlinx.coroutines.GlobalScope.launch {
                     try {
                         menuItemDao.clearAll()
@@ -125,6 +104,7 @@ class MenuRepositoryImpl @Inject constructor(
         name = name,
         price = price,
         imageUrl = imageUrl,
-        available = available
+        available = available,
+        isBestSeller = isBestSeller
     )
 }

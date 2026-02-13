@@ -29,9 +29,6 @@ import com.example.androidkiosk.model.CategoryWithItems
 import com.example.androidkiosk.model.MenuItem
 import java.util.Locale
 
-/**
- * A horizontal row representing a category and its items.
- */
 @Composable
 fun CategorySection(
     category: CategoryWithItems,
@@ -70,9 +67,6 @@ fun CategorySection(
     }
 }
 
-/**
- * Visual representation of a standard menu item in a category list.
- */
 @Composable
 private fun MenuItemCard(
     item: MenuItem,

@@ -38,10 +38,6 @@ import com.example.androidkiosk.model.WeatherUiState
 import com.example.androidkiosk.model.getWeatherDisplayLabel
 import java.util.Locale
 
-/**
- * Weather section with looped MP4 background from raw resources.
- * Displays current temperature and weather conditions for Cebu City.
- */
 @Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
 @OptIn(UnstableApi::class)
 @Composable

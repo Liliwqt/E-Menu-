@@ -4,9 +4,6 @@ import com.example.androidkiosk.data.remote.dto.OpenMeteoResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-/**
- * Retrofit service interface for the Open-Meteo weather API.
- */
 interface WeatherApiService {
 
     @GET("v1/forecast")

@@ -11,18 +11,11 @@ import com.example.androidkiosk.ui.checkout.CheckoutScreen
 import com.example.androidkiosk.ui.menu.MenuScreen
 import com.example.androidkiosk.ui.menu.MenuViewModel
 
-/**
- * Main navigation graph for the app.
- *
- * The [MenuViewModel] is scoped to the NavHost so state (especially the cart)
- * is shared across all screens without needing a global store.
- */
 @Composable
 fun AppNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
-    // Share the ViewModel across the nav graph so the cart persists
     val menuViewModel: MenuViewModel = hiltViewModel()
 
     NavHost(
@@ -52,7 +45,6 @@ fun AppNavHost(
                 viewModel = menuViewModel,
                 onNavigateBack = { navController.popBackStack() },
                 onOrderConfirmed = {
-                    // Pop back to the menu screen after order is confirmed
                     navController.popBackStack(Route.Menu, inclusive = false)
                 }
             )

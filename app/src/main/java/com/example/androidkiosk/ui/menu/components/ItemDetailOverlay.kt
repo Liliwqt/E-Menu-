@@ -52,10 +52,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-/**
- * Fullscreen overlay that displays detailed information about a selected menu item.
- * Features animated entry/exit and an "Add to Cart" action.
- */
 @Composable
 fun ItemDetailOverlay(
     item: MenuItem,

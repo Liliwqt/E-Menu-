@@ -25,12 +25,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-/**
- * Unit tests for [MenuViewModel].
- *
- * Uses MockK for mocking repositories and Turbine for testing StateFlows.
- * Demonstrates proper ViewModel testing with injected dependencies.
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MenuViewModelTest {
 

@@ -36,10 +36,6 @@ import androidx.compose.ui.unit.dp
 import com.example.androidkiosk.ui.menu.MenuViewModel
 import java.util.Locale
 
-/**
- * Checkout screen overlay that displays order summary and confirmation.
- * Navigated to from the Cart screen.
- */
 @Composable
 fun CheckoutScreen(
     viewModel: MenuViewModel,
@@ -72,7 +68,6 @@ fun CheckoutScreen(
             shape = RoundedCornerShape(0.dp),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Header
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -89,8 +84,6 @@ fun CheckoutScreen(
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
-
-                // Order Summary
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -114,8 +107,6 @@ fun CheckoutScreen(
                         }
                     }
                 }
-
-                // Footer / Total and Confirm
                 val total = cartItems.sumOf { it.menuItem.price * it.quantity }
 
                 Column(

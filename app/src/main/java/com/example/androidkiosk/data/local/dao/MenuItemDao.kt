@@ -7,10 +7,6 @@ import androidx.room.Query
 import com.example.androidkiosk.data.local.entity.MenuItemEntity
 import kotlinx.coroutines.flow.Flow
 
-/**
- * Data Access Object for cached menu items.
- * Provides offline-first access to menu data.
- */
 @Dao
 interface MenuItemDao {
 

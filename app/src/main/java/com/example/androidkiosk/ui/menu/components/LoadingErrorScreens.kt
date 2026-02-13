@@ -21,9 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
 
-/**
- * Screen shown while menu data is being fetched.
- */
 @Composable
 fun LoadingScreen() {
     Box(
@@ -44,9 +41,6 @@ fun LoadingScreen() {
     }
 }
 
-/**
- * Screen shown when an error occurs during data fetching.
- */
 @Composable
 fun ErrorScreen(
     message: String,
