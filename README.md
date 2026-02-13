@@ -7,7 +7,7 @@
 ![Hilt](https://img.shields.io/badge/Hilt-2.59.1-2196F3)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-A modern restaurant/food kiosk Android application built with Jetpack Compose and Clean Architecture. Designed for Cebu City-area restaurants, the app provides an immersive, full-screen kiosk experience for browsing menus, viewing best sellers, checking live weather, and placing orders.
+A modern restaurant/food kiosk Android application built with Jetpack Compose and Clean Architecture. Designed for Cebu City-area Fast Foods, the app provides an immersive, full-screen kiosk experience for browsing menus, viewing best sellers, checking live weather, and placing orders.
 
 ## Features
 
