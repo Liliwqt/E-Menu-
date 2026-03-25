@@ -5,28 +5,26 @@
 ![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Material3-4285F4?logo=jetpackcompose&logoColor=white)
 ![Firebase](https://img.shields.io/badge/Firebase-Realtime%20DB-FFCA28?logo=firebase&logoColor=black)
 ![Hilt](https://img.shields.io/badge/Hilt-2.59.1-2196F3)
-![License](https://img.shields.io/badge/License-MIT-green)
 
-A modern restaurant/food kiosk Android application built with Jetpack Compose and Clean Architecture. Designed for Cebu City-area Fast Foods, the app provides an immersive, full-screen kiosk experience for browsing menus, viewing best sellers, checking live weather, and placing orders.
+A production-oriented Android kiosk app for restaurant ordering, built with Jetpack Compose, Hilt, Room, and Firebase Realtime Database.
 
-## Features
+The app runs as a full-screen kiosk with admin unlock controls, dynamic theming from Firebase settings, and order logging for completed payments.
 
-- **Menu Browsing** — Browse food items organized by category with horizontal scrollable rows
-- **Best Sellers Carousel** — Infinite-scrolling hero carousel showcasing popular items (Material3 `HorizontalCenteredHeroCarousel`)
-- **Live Weather Widget** — Real-time weather data for Cebu City via Open-Meteo API, with looping MP4 video background powered by ExoPlayer
-- **Item Detail Overlay** — Fullscreen animated overlay with item details and "Add to Cart" action
-- **Shopping Cart** — Add, remove, and update item quantities with animated cart overlay
-- **Checkout Flow** — Order summary with confirmation
-- **Offline-First** — Local Room database cache with Firebase Realtime Database sync in the background
-- **Immersive Kiosk Mode** — Hidden system bars, edge-to-edge display, screen always on, portrait-locked
-- **Crash Reporting & Analytics** — Firebase Crashlytics and Firebase Analytics integration
+## Current Features
+
+- **Single-screen kiosk flow** — Menu browsing, item details, cart, checkout, and payment overlays are handled in one Compose flow (`MenuScreen`)
+- **Three menu layouts** — Select between `CURRENT`, `NEW_HORIZONTAL`, and `PORTRAIT` modes at runtime
+- **Category + best seller browsing** — Category pages, side panel navigation, and featured items
+- **Order pipeline** — Add to cart, quantity updates, checkout confirmation, payment method selection (QR/Counter)
+- **Firebase-backed data** — Menu categories, app settings (theme/background), and order logs
+- **Offline-first reads** — Room cache with Firebase sync
+- **Kiosk hardening** — Lock task mode, persistent home behavior, boot auto-launch, blocked system escape routes (when Device Owner is provisioned)
+- **Admin unlock controls** — PIN dialog trigger via long-press volume up or secret corner taps; encrypted PIN storage with lockout policy
+- **Observability** — Timber logging + Firebase Crashlytics/Analytics
 
 ## Screenshots
 
-<!-- Add your screenshots here -->
-<!-- ![Menu Screen](screenshots/menu.png) -->
-<!-- ![Cart Screen](screenshots/cart.png) -->
-<!-- ![Checkout Screen](screenshots/checkout.png) -->
+![Current App Screenshot](screenshot.png)
 
 ## Tech Stack
 
@@ -36,172 +34,131 @@ A modern restaurant/food kiosk Android application built with Jetpack Compose an
 | UI Framework | Jetpack Compose (Material3) | BOM 2026.01.00 |
 | Dependency Injection | Hilt (Dagger) | 2.59.1 |
 | Annotation Processing | KSP | 2.3.5 |
-| Navigation | Navigation Compose (type-safe routes) | 2.9.6 |
-| Networking | Retrofit 2 + OkHttp | 2.11.0 / 4.12.0 |
-| Serialization | Kotlinx Serialization | 1.8.1 |
 | Local Database | Room | 2.7.1 |
-| Remote Database | Firebase Realtime Database | 22.0.1 |
-| Crash Reporting | Firebase Crashlytics | 19.4.2 |
-| Analytics | Firebase Analytics | 22.5.0 |
+| Remote Database | Firebase Realtime Database | BOM 34.8.0 |
+| Authentication | Firebase Auth (Anonymous) | BOM 34.8.0 |
+| Crash Reporting | Firebase Crashlytics | BOM 34.8.0 |
+| Analytics | Firebase Analytics | BOM 34.8.0 |
 | Image Loading | Coil 3 | 3.3.0 |
-| Video Player | Media3 ExoPlayer | 1.9.1 |
+| Media | Media3 ExoPlayer | 1.9.1 |
+| Networking (legacy/internal) | Retrofit 2 + OkHttp | 2.11.0 / 4.12.0 |
+| Security | EncryptedSharedPreferences | 1.1.0-alpha06 |
 | Logging | Timber | 5.0.1 |
-| Testing | JUnit 4, MockK 1.13.16, Turbine 1.2.0, Coroutines Test | - |
-| Build System | Gradle (Kotlin DSL) + Version Catalog | AGP 9.0.0 |
-| Min SDK | 28 (Android 9.0) | |
-| Target / Compile SDK | 36 | |
+| Testing | JUnit4, MockK, Turbine, Coroutines Test | - |
+| Build System | Gradle Kotlin DSL + Version Catalog | AGP 9.0.0 |
+| Min SDK | Android 9.0 | API 28 |
+| Target / Compile SDK | Android 16 | API 36 |
 
-## Architecture
+## Architecture Overview
 
-The project follows **Clean Architecture** with the **MVVM** pattern, organized into three layers:
+The project follows a clean layered structure with MVVM:
 
-```
-┌─────────────────────────────────────────────────┐
-│                 Presentation (ui/)              │
-│  MenuScreen, CartScreen, CheckoutScreen         │
-│  MenuViewModel, Components, Theme, Navigation   │
-├─────────────────────────────────────────────────┤
-│                  Domain (domain/)               │
-│  MenuRepository (interface)                     │
-│  WeatherRepository (interface)                  │
-├─────────────────────────────────────────────────┤
-│                   Data (data/)                  │
-│  MenuRepositoryImpl, WeatherRepositoryImpl      │
-│  Room (local), Firebase + Retrofit (remote)     │
-└─────────────────────────────────────────────────┘
+- **UI layer (`ui/`)**: Compose screens/components, overlays, theming, animation tokens
+- **Domain layer (`domain/repository/`)**: Repository interfaces
+- **Data layer (`data/`)**: Firebase + Room implementations and mapping
+- **Admin layer (`admin/`)**: Kiosk mode management, Device Admin, PIN/auth and unlock logging
+- **DI layer (`di/`)**: Hilt modules and app startup wiring
+
+### Runtime flow
+
+1. `MenuApplication` initializes Firebase persistence and anonymous sign-in
+2. `MainActivity` enforces kiosk behavior and hosts Compose content
+3. `MenuViewModel` streams categories, best sellers, and app settings
+4. User completes checkout and selects payment
+5. Completed order is logged to Firebase
+
+## Firebase Data Paths
+
+Current app reads/writes these Realtime Database paths:
+
+- `branch2/categories` — Menu categories and items
+- `branch2/appSettings` — Background image/theme settings
+- `branch2/logs/{orderNumber}` — Completed order logs
+
+Anonymous auth is required before listeners/writes attach. This project expects Firebase rules compatible with authenticated reads (for example, `auth != null`).
+
+## Kiosk / Admin Notes
+
+- Main activity is registered as launcher + home category
+- Device Admin receiver is declared with `device_admin_policies`
+- Boot receiver relaunches the app after reboot (`BOOT_COMPLETED`, `LOCKED_BOOT_COMPLETED`)
+- Device Owner mode enables full lock task enforcement via `KioskManager`
+
+### Device Owner provisioning (development/provisioning step)
+
+```bash
+adb shell dpm set-device-owner com.example.androidkiosk/.admin.KioskDeviceAdminReceiver
 ```
 
-**Data Flow:**
-```
-Firebase Realtime DB ──► RepositoryImpl ──► Room (cache) ──► Flow ──► ViewModel ──► Compose UI
-Open-Meteo API ────────► WeatherRepo ──────────────────────► Flow ──► ViewModel ──► Compose UI
-```
+If Device Owner is not set, the app still runs in a degraded development mode.
 
 ## Project Structure
 
-```
+```text
 app/src/main/java/com/example/androidkiosk/
-├── di/                          # Dependency Injection
-│   ├── MenuApplication.kt      # Hilt Application class
-│   ├── DatabaseModule.kt       # Room database provider
-│   ├── NetworkModule.kt        # Retrofit & OkHttp provider
-│   ├── FirebaseModule.kt       # Firebase instance provider
-│   └── RepositoryModule.kt     # Repository bindings
-├── model/                       # Domain models
-│   ├── MenuItem.kt              # Menu item data class
-│   └── Weather.kt               # Weather data classes
-├── domain/                      # Domain layer
-│   └── repository/
-│       ├── MenuRepository.kt    # Menu repository interface
-│       └── WeatherRepository.kt # Weather repository interface
-├── data/                        # Data layer
-│   ├── local/
-│   │   ├── MenuDatabase.kt     # Room database
-│   │   ├── dao/
-│   │   │   └── MenuItemDao.kt  # Data access object
-│   │   └── entity/
-│   │       └── MenuItemEntity.kt
-│   ├── remote/
-│   │   ├── api/
-│   │   │   └── WeatherApiService.kt  # Retrofit API
-│   │   └── dto/
-│   │       └── WeatherDto.kt         # API response DTOs
-│   └── repository/
-│       ├── MenuRepositoryImpl.kt     # Menu repo implementation
-│       └── WeatherRepositoryImpl.kt  # Weather repo implementation
-└── ui/                          # Presentation layer
-    ├── main/
-    │   └── MainActivity.kt     # Single Activity (Compose)
-    ├── menu/
-    │   ├── MenuScreen.kt       # Main menu screen
-    │   ├── MenuViewModel.kt    # Menu state management
-    │   └── components/
-    │       ├── BestSellersSection.kt
-    │       ├── CategorySection.kt
-    │       ├── WeatherSection.kt
-    │       ├── ItemDetailOverlay.kt
-    │       └── LoadingErrorScreens.kt
-    ├── cart/
-    │   └── CartScreen.kt       # Shopping cart
-    ├── checkout/
-    │   └── CheckoutScreen.kt   # Checkout flow
-    ├── navigation/
-    │   ├── Route.kt            # Type-safe route definitions
-    │   └── AppNavHost.kt       # Navigation graph
-    └── theme/
-        ├── Color.kt
-        ├── Theme.kt
-        └── Type.kt
+├── admin/                  # Kiosk/device-admin/auth/PIN utilities
+├── data/                   # Local/remote data sources + repository impl
+├── di/                     # Hilt modules + MenuApplication
+├── domain/repository/      # Repository contracts
+├── model/                  # App and domain models
+├── ui/
+│   ├── main/               # MainActivity
+│   ├── menu/               # MenuScreen + MenuViewModel + components
+│   ├── animation/          # Motion/shimmer/stagger utilities
+│   └── theme/              # Dynamic theme/background primitives
+└── util/                   # App utility helpers
 ```
 
 ## Prerequisites
 
-- **Android Studio** Meerkat (2024.3.1) or later
-- **JDK 17** or higher
-- A **Firebase project** with Realtime Database enabled
-- `google-services.json` placed in `app/`
+- Android Studio (recent stable)
+- JDK 17+
+- Android SDK configured in `local.properties`
+- Firebase project (Realtime Database + Auth + Crashlytics/Analytics)
+- `app/google-services.json` present
 
 ## Getting Started
 
-1. **Clone the repository**
+1. **Clone**
    ```bash
-   git clone https://github.com/<your-username>/android-kiosk-menu.git
-   cd android-kiosk-menu
+   git clone https://github.com/Liliwqt/E-Menu.git
+   cd E-Menu
    ```
 
-2. **Set up Firebase**
-   - Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
-   - Enable **Realtime Database** and **Crashlytics**
-   - Download `google-services.json` and place it in the `app/` directory
+2. **Configure Firebase**
+   - Add your `google-services.json` to `app/`
+   - Ensure Realtime Database and Anonymous Auth are enabled
 
-3. **Configure local properties**
-   - Ensure `local.properties` has your Android SDK path:
-     ```properties
-     sdk.dir=/path/to/your/Android/Sdk
-     ```
+3. **Configure local SDK path**
+   ```properties
+   sdk.dir=/path/to/Android/Sdk
+   ```
 
-4. **Open in Android Studio**
-   - Open the project root folder
-   - Wait for Gradle sync to complete
-
-5. **Run the app**
+4. **Run debug build**
    ```bash
    ./gradlew installDebug
    ```
-   Or use the Run button in Android Studio.
 
-## Configuration
+## Build, Test, Release
 
-### Release Signing
-
-For release builds, create a `keystore.properties` file in the project root (see `keystore.properties.example`):
-
-```properties
-storePassword=your_store_password
-keyPassword=your_key_password
-keyAlias=your_key_alias
-storeFile=/path/to/your/keystore.jks
-```
-
-### Firebase Database Structure
-
-The app reads its menu data and settings from Firebase Realtime Database. See the Firebase Console for the project's database structure and security rules.
-```
-
-## Testing
-
-Run unit tests:
+### Unit tests
 ```bash
 ./gradlew test
 ```
 
-Run instrumented tests:
+### Instrumented tests
 ```bash
 ./gradlew connectedAndroidTest
 ```
 
-The test suite uses **MockK** for mocking, **Turbine** for Flow testing, and **Coroutines Test** for structured concurrency testing. Tests cover ViewModel logic including menu loading, cart operations (add/remove/update quantity), and error handling.
+### Release build
+```bash
+./gradlew assembleRelease
+```
 
-## License
+For release signing, copy `keystore.properties.example` to `keystore.properties` and fill your values.
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+## Notes
+
+- Weather feature logic has been removed from active app behavior.
+- Legacy networking dependencies remain in Gradle for internal/compatibility needs.
