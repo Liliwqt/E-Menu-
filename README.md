@@ -185,21 +185,7 @@ storeFile=/path/to/your/keystore.jks
 
 ### Firebase Database Structure
 
-The app expects the following structure in Firebase Realtime Database:
-
-```json
-{
-  "menuItems": {
-    "item_id": {
-      "name": "Item Name",
-      "description": "Item description",
-      "price": 99.0,
-      "imageUrl": "https://...",
-      "categoryName": "Category",
-      "isBestSeller": true
-    }
-  }
-}
+The app reads its menu data and settings from Firebase Realtime Database. See the Firebase Console for the project's database structure and security rules.
 ```
 
 ## Testing

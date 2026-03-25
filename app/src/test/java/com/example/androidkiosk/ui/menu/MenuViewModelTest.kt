@@ -1,15 +1,11 @@
 package com.example.androidkiosk.ui.menu
 
 import app.cash.turbine.test
+import com.example.androidkiosk.domain.repository.AppSettingsRepository
 import com.example.androidkiosk.domain.repository.MenuRepository
-import com.example.androidkiosk.domain.repository.WeatherRepository
-import com.example.androidkiosk.model.CartItem
+import com.example.androidkiosk.domain.repository.OrderRepository
 import com.example.androidkiosk.model.CategoryWithItems
 import com.example.androidkiosk.model.MenuItem
-import com.example.androidkiosk.model.WeatherCondition
-import com.example.androidkiosk.model.WeatherUiState
-import com.example.androidkiosk.model.TimeOfDay
-import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +26,8 @@ class MenuViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var menuRepository: MenuRepository
-    private lateinit var weatherRepository: WeatherRepository
+    private lateinit var orderRepository: OrderRepository
+    private lateinit var appSettingsRepository: AppSettingsRepository
     private lateinit var viewModel: MenuViewModel
 
     private val sampleItems = listOf(
@@ -46,17 +43,13 @@ class MenuViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         menuRepository = mockk(relaxed = true)
-        weatherRepository = mockk(relaxed = true)
+        orderRepository = mockk(relaxed = true)
+        appSettingsRepository = mockk(relaxed = true)
 
         every { menuRepository.observeCategories() } returns flowOf(sampleCategories)
         every { menuRepository.observeBestSellers() } returns flowOf(sampleItems)
-        coEvery { weatherRepository.getCurrentWeather() } returns WeatherUiState.Available(
-            temperatureC = 30.0,
-            condition = WeatherCondition.Hot,
-            timeOfDay = TimeOfDay.Day
-        )
 
-        viewModel = MenuViewModel(menuRepository, weatherRepository)
+        viewModel = MenuViewModel(menuRepository, orderRepository, appSettingsRepository)
     }
 
     @After

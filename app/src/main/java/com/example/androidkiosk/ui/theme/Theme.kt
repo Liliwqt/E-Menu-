@@ -1,44 +1,111 @@
 package com.example.androidkiosk.ui.theme
 
-import android.os.Build
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-private val DarkColorScheme = darkColorScheme(
-    primary = Black120,
-    secondary = Black120,
-    tertiary = Pink80
-)
-private val LightColorScheme = lightColorScheme(
-    primary = Black120,
-    secondary = Black120,
-    tertiary = Black120
-    
-    
-)
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
+
+/**
+ * CompositionLocal for providing the background image URL from Firebase appSettings.
+ * When null, the default drawable (R.drawable.menu_background) is used.
+ */
+val LocalBackgroundImageUrl = staticCompositionLocalOf<String?> { null }
+
+/**
+ * CompositionLocal for the active background theme resolved from Firebase.
+ * Defaults to [BackgroundTheme.Dark].
+ */
+val LocalBackgroundTheme = staticCompositionLocalOf<BackgroundTheme> { BackgroundTheme.Dark }
+
+/**
+ * CompositionLocal for reduced-motion accessibility preference.
+ * When true, animations should be instant or minimal.
+ */
+val LocalReducedMotion = staticCompositionLocalOf { false }
 
 @Composable
 fun AndroidKioskTheme(
-    darkTheme: Boolean = false,
-    dynamicColor: Boolean = true,
+    backgroundImageUrl: String? = null,
+    backgroundThemeName: String = "Dark",
+    reducedMotion: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context)
-            else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    val bgTheme = BackgroundTheme.fromName(backgroundThemeName)
+
+    // Build a color scheme that matches the resolved theme so that
+    // MaterialTheme.colorScheme.background / onBackground / surface etc.
+    // are coherent with the custom BackgroundTheme palette.
+    val colorScheme = if (bgTheme is BackgroundTheme.Light) {
+        lightColorScheme(
+            primary = bgTheme.accentColor,
+            onPrimary = Color.White,
+            primaryContainer = bgTheme.primaryContainer,
+            onPrimaryContainer = bgTheme.onPrimaryContainer,
+            secondary = bgTheme.accentColor,
+            secondaryContainer = bgTheme.secondaryContainer,
+            onSecondaryContainer = bgTheme.onSecondaryContainer,
+            tertiary = bgTheme.accentColor,
+            tertiaryContainer = bgTheme.tertiaryContainer,
+            onTertiaryContainer = bgTheme.onTertiaryContainer,
+            background = bgTheme.backgroundColor,
+            onBackground = bgTheme.primaryTextColor,
+            surface = bgTheme.surfaceColor,
+            onSurface = bgTheme.primaryTextColor,
+            surfaceVariant = bgTheme.surfaceOverlayColor,
+            onSurfaceVariant = bgTheme.secondaryTextColor,
+            surfaceContainerLowest = bgTheme.surfaceContainerLowest,
+            surfaceContainerLow = bgTheme.surfaceContainerLow,
+            surfaceContainer = bgTheme.surfaceContainer,
+            surfaceContainerHigh = bgTheme.surfaceContainerHigh,
+            surfaceContainerHighest = bgTheme.surfaceContainerHighest,
+            outline = bgTheme.outlineColor,
+            outlineVariant = bgTheme.outlineVariantColor,
+            errorContainer = bgTheme.errorContainer,
+            onErrorContainer = bgTheme.onErrorContainer
+        )
+    } else {
+        darkColorScheme(
+            primary = bgTheme.accentColor,
+            onPrimary = Color.White,
+            primaryContainer = bgTheme.primaryContainer,
+            onPrimaryContainer = bgTheme.onPrimaryContainer,
+            secondary = bgTheme.accentColor,
+            secondaryContainer = bgTheme.secondaryContainer,
+            onSecondaryContainer = bgTheme.onSecondaryContainer,
+            tertiary = bgTheme.accentColor,
+            tertiaryContainer = bgTheme.tertiaryContainer,
+            onTertiaryContainer = bgTheme.onTertiaryContainer,
+            background = bgTheme.backgroundColor,
+            onBackground = bgTheme.primaryTextColor,
+            surface = bgTheme.surfaceColor,
+            onSurface = bgTheme.primaryTextColor,
+            surfaceVariant = bgTheme.surfaceOverlayColor,
+            onSurfaceVariant = bgTheme.secondaryTextColor,
+            surfaceContainerLowest = bgTheme.surfaceContainerLowest,
+            surfaceContainerLow = bgTheme.surfaceContainerLow,
+            surfaceContainer = bgTheme.surfaceContainer,
+            surfaceContainerHigh = bgTheme.surfaceContainerHigh,
+            surfaceContainerHighest = bgTheme.surfaceContainerHighest,
+            outline = bgTheme.outlineColor,
+            outlineVariant = bgTheme.outlineVariantColor,
+            errorContainer = bgTheme.errorContainer,
+            onErrorContainer = bgTheme.onErrorContainer
+        )
     }
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+
+    CompositionLocalProvider(
+        LocalBackgroundImageUrl provides backgroundImageUrl,
+        LocalBackgroundTheme provides bgTheme,
+        LocalReducedMotion provides reducedMotion
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            shapes = AppShapes,
+            content = content
+        )
+    }
 }

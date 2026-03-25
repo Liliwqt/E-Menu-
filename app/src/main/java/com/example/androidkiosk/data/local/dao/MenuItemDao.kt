@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.example.androidkiosk.data.local.entity.MenuItemEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -27,4 +28,11 @@ interface MenuItemDao {
 
     @Query("DELETE FROM menu_items")
     suspend fun clearAll()
+
+    /** Atomically replaces all rows in a single transaction. */
+    @Transaction
+    suspend fun replaceAll(items: List<MenuItemEntity>) {
+        clearAll()
+        insertAll(items)
+    }
 }

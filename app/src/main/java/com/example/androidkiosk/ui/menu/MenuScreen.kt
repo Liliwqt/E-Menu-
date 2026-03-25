@@ -12,43 +12,53 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -59,62 +69,170 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import coil3.compose.AsyncImage
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.activity.compose.LocalActivity
 import com.example.androidkiosk.R
+import com.example.androidkiosk.admin.PinManager
+import com.example.androidkiosk.admin.UnlockMethod
+import com.example.androidkiosk.ui.theme.LocalBackgroundImageUrl
+import com.example.androidkiosk.ui.theme.LocalBackgroundTheme
+import com.example.androidkiosk.util.ImageUrlValidator
 import com.example.androidkiosk.model.CartItem
 import com.example.androidkiosk.model.CategoryWithItems
 import com.example.androidkiosk.model.MenuItem
-import com.example.androidkiosk.model.WeatherUiState
-import com.example.androidkiosk.ui.menu.components.BestSellersSection
-import com.example.androidkiosk.ui.menu.components.CategorySection
+import com.example.androidkiosk.model.Order
+import com.example.androidkiosk.model.PaymentMethod
+import com.example.androidkiosk.ui.menu.components.AdminPinDialog
+import com.example.androidkiosk.ui.menu.components.CategoryPageContent
+import com.example.androidkiosk.ui.menu.components.CounterPaymentOverlay
 import com.example.androidkiosk.ui.menu.components.ErrorScreen
+import com.example.androidkiosk.ui.menu.components.GlassCard
 import com.example.androidkiosk.ui.menu.components.ItemDetailOverlay
 import com.example.androidkiosk.ui.menu.components.LoadingScreen
-import com.example.androidkiosk.ui.menu.components.WeatherSection
+import com.example.androidkiosk.ui.menu.components.MenuItemCard
+import com.example.androidkiosk.ui.menu.components.MenuModeSelectionScreen
+import com.example.androidkiosk.ui.menu.components.PaymentMethodOverlay
+import com.example.androidkiosk.ui.menu.components.QRPaymentOverlay
+import com.example.androidkiosk.ui.menu.components.SideCategoryPanel
+import com.example.androidkiosk.ui.menu.components.categoryIcon
+import androidx.compose.material3.VerticalDivider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+/** Enum to track UI mode: current vertical design, horizontal slide, or portrait design */
+enum class UIMode {
+    CURRENT,
+    NEW_HORIZONTAL,
+    PORTRAIT
+}
+
+/** Tracks the source that triggered the PIN dialog for logging. */
+private var currentUnlockMethod: UnlockMethod = UnlockMethod.VOLUME_BUTTON
+
 @Composable
 fun MenuScreen(
     viewModel: MenuViewModel,
-    onNavigateToCart: () -> Unit = {}
+    showPinDialog: Boolean = false,
+    isAdminUnlocked: Boolean = false,
+    pinManager: PinManager? = null,
+    onPinDialogDismiss: () -> Unit = {},
+    onUnlockSuccess: (UnlockMethod) -> Unit = {},
+    onRelockRequest: () -> Unit = {},
+    onPinDialogRequest: () -> Unit = {},
+    onPinFailed: (UnlockMethod) -> Unit = {}
 ) {
     val bestSellers by viewModel.bestSellers.collectAsState()
-    val weatherState by viewModel.weather.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val cartItems by viewModel.cartItems.collectAsState()
+    
+    // Track UI mode — null means show the mode selection screen
+    var selectedUIMode by remember { mutableStateOf<UIMode?>(null) }
 
     var selectedItem by remember { mutableStateOf<MenuItem?>(null) }
     var showCart by remember { mutableStateOf(false) }
     var showCheckout by remember { mutableStateOf(false) }
-    
+    var showPaymentMethod by remember { mutableStateOf(false) }
+    var showQRPayment by remember { mutableStateOf(false) }
+    var showCounterPayment by remember { mutableStateOf(false) }
+    var currentOrder by remember { mutableStateOf<Order?>(null) }
+
+    // Secret corner tap state: 5 taps in top-right corner within 3 seconds
+    // Suppress: reset to emptyList() is intentional — Compose reads it on next recomposition
+    @Suppress("UNUSED_VALUE")
+    var cornerTapTimestamps by remember { mutableStateOf(listOf<Long>()) }
+
+    // Programmatically control screen orientation based on selected UI mode
+    val activity = LocalActivity.current
+    DisposableEffect(selectedUIMode) {
+        val orientation = if (selectedUIMode == UIMode.PORTRAIT)
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        else
+            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        activity?.requestedOrientation = orientation
+        onDispose {
+            // Restore landscape when leaving the screen entirely
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        }
+    }
+
     val blurAmount by animateFloatAsState(
-        targetValue = if (selectedItem != null || showCart || showCheckout) 10f else 0f,
-        animationSpec = tween(300),
+        targetValue = if (selectedItem != null || showCart || showCheckout || showPaymentMethod || showQRPayment || showCounterPayment || showPinDialog) 10f else 0f,
+        animationSpec = tween(150), // Changed: 2x quicker (was 300ms)
         label = "blur"
     )
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .pointerInput(Unit) {
+            detectTapGestures { offset ->
+                // Detect taps in the top-right corner (100x100 dp area)
+                val cornerSize = 100.dp.toPx()
+                if (offset.x > size.width - cornerSize && offset.y < cornerSize) {
+                    val now = System.currentTimeMillis()
+                    cornerTapTimestamps = (cornerTapTimestamps + now)
+                        .filter { it > now - 3000 } // Keep taps within last 3 seconds
+                    if (cornerTapTimestamps.size >= 5) {
+                        cornerTapTimestamps = emptyList()
+                        currentUnlockMethod = UnlockMethod.CORNER_TAP
+                        onPinDialogRequest()
+                    }
+                }
+            }
+        }
+    ) {
+        val bgTheme = LocalBackgroundTheme.current
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .then(if (blurAmount > 0f) Modifier.blur(blurAmount.dp) else Modifier)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.menu_background),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            // ── Dynamic background: theme-aware ─────────────────
+            if (bgTheme.usesBackgroundImage) {
+                // Light theme: use Firebase background image or default drawable
+                val backgroundImageUrl = LocalBackgroundImageUrl.current
+                val validatedBackgroundUrl = ImageUrlValidator.sanitize(backgroundImageUrl)
+                if (!validatedBackgroundUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = validatedBackgroundUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        fallback = painterResource(id = R.drawable.menu_background),
+                        error = painterResource(id = R.drawable.menu_background)
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.menu_background),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            } else {
+                // Non-image themes: solid color or gradient background
+                val bgBrush = bgTheme.backgroundBrush
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (bgBrush != null) Modifier.background(bgBrush)
+                            else Modifier.background(bgTheme.backgroundColor)
+                        )
+                )
+            }
             Scaffold(
                 containerColor = Color.Transparent,
                 modifier = Modifier.fillMaxSize(),
@@ -128,13 +246,44 @@ fun MenuScreen(
                         )
                     }
                     else -> {
-                        MenuContent(
-                            modifier = Modifier.padding(paddingValues),
-                            bestSellers = bestSellers,
-                            categories = categories,
-                            weatherState = weatherState,
-                            onItemClick = { item -> selectedItem = item }
-                        )
+                        val uiMode = selectedUIMode
+                        if (uiMode == null) {
+                            // Show mode selection dialog
+                            MenuModeSelectionScreen(
+                                onModeSelected = { mode -> selectedUIMode = mode },
+                                modifier = Modifier.padding(paddingValues)
+                            )
+                        } else {
+                            // Show selected menu layout
+                            Box(modifier = Modifier.padding(paddingValues)) {
+                                when (uiMode) {
+                                    UIMode.CURRENT -> {
+                                        MenuContent(
+                                            modifier = Modifier.fillMaxSize(),
+                                            bestSellers = bestSellers,
+                                            categories = categories,
+                                            onItemClick = { item -> selectedItem = item }
+                                        )
+                                    }
+                                    UIMode.NEW_HORIZONTAL -> {
+                                        NewHorizontalMenuContent(
+                                            modifier = Modifier.fillMaxSize(),
+                                            bestSellers = bestSellers,
+                                            categories = categories,
+                                            onItemClick = { item -> selectedItem = item }
+                                        )
+                                    }
+                                    UIMode.PORTRAIT -> {
+                                        PortraitMenuContent(
+                                            modifier = Modifier.fillMaxSize(),
+                                            bestSellers = bestSellers,
+                                            categories = categories,
+                                            onItemClick = { item -> selectedItem = item }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -144,70 +293,480 @@ fun MenuScreen(
                 .align(Alignment.BottomEnd)
                 .padding(32.dp)
         ) {
-            LargeFloatingActionButton(
-                onClick = { showCart = true },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(
-                    bottomEnd = 12.dp,
-                    bottomStart = 40.dp,
-                    topEnd = 40.dp,
-                    topStart = 35.dp
-                )
+            BadgedBox(
+                badge = {
+                    if (cartItems.isNotEmpty()) {
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        ) {
+                            Text(
+                                text = cartItems.sumOf { it.quantity }.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .padding(8.dp)
             ) {
-                Box(modifier = Modifier.padding(8.dp)) {
+                LargeFloatingActionButton(
+                    onClick = { showCart = true },
+                    containerColor = bgTheme.buttonContainerColor,
+                    contentColor = bgTheme.buttonContentColor,
+                    shape = MaterialTheme.shapes.extraLarge
+                ) {
                     Icon(
                         imageVector = Icons.Default.ShoppingCart,
-                        contentDescription = "View Cart",
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-            }
-
-            if (cartItems.isNotEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 8.dp, y = (-6).dp)
-                        .background(Color.Red, CircleShape)
-                        .size(38.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = cartItems.sumOf { it.quantity }.toString(),
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+                        contentDescription = "Shopping Cart",
+                        modifier = Modifier.size(32.dp)
                     )
                 }
             }
         }
-        if (selectedItem != null) {
+
+        // ── Overlays ───────────────────────────────────────────
+        selectedItem?.let { item ->
             ItemDetailOverlay(
-                item = selectedItem!!,
+                item = item,
                 onDismiss = { selectedItem = null },
-                onAddToCart = { menuItem ->
-                    viewModel.addToCart(menuItem)
-                    selectedItem = null
+                onAddToCart = { menuItem, quantity -> 
+                    viewModel.addToCartWithQuantity(menuItem, quantity) 
                 }
             )
         }
+
         if (showCart) {
             CartOverlay(
                 viewModel = viewModel,
                 onDismiss = { showCart = false },
-                onProceedToCheckout = {
-                    showCart = false
-                    showCheckout = true
-                }
+                onProceedToCheckout = { showCart = false; showCheckout = true }
             )
         }
+
         if (showCheckout) {
             CheckoutOverlay(
                 viewModel = viewModel,
                 onDismiss = { showCheckout = false },
-                onOrderConfirmed = { showCheckout = false }
+                onOrderConfirmed = { order ->
+                    currentOrder = order
+                    showCheckout = false
+                    showPaymentMethod = true
+                }
             )
+        }
+
+        if (showPaymentMethod && currentOrder != null) {
+            PaymentMethodOverlay(
+                order = currentOrder!!,
+                onDismiss = { showPaymentMethod = false },
+                onMethodSelected = { paymentMethod ->
+                    viewModel.selectPaymentMethod(paymentMethod)
+                    showPaymentMethod = false
+                    when (paymentMethod) {
+                        PaymentMethod.QR_CODE -> {
+                            showQRPayment = true
+                        }
+                        PaymentMethod.COUNTER -> {
+                            showCounterPayment = true
+                        }
+                    }
+                }
+            )
+        }
+
+        if (showQRPayment && currentOrder != null) {
+            QRPaymentOverlay(
+                order = currentOrder!!,
+                onDismiss = {
+                    showQRPayment = false
+                    showPaymentMethod = false
+                    currentOrder = null
+                    viewModel.resetOrderFlow()
+                }
+            )
+        }
+
+        if (showCounterPayment && currentOrder != null) {
+            CounterPaymentOverlay(
+                order = currentOrder!!,
+                onDismiss = {
+                    showCounterPayment = false
+                    showPaymentMethod = false
+                    currentOrder = null
+                    viewModel.resetOrderFlow()
+                }
+            )
+        }
+
+        // Admin PIN Dialog (shown when admin button is pressed or secret corner is tapped 5 times)
+        if (showPinDialog && pinManager != null) {
+            AdminPinDialog(
+                pinManager = pinManager,
+                onUnlockSuccess = { onUnlockSuccess(currentUnlockMethod) },
+                onDismiss = { onPinDialogDismiss() },
+                onPinFailed = { onPinFailed(currentUnlockMethod) }
+            )
+        }
+
+        // Unlock button (only visible when already unlocked)
+        if (isAdminUnlocked) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+            ) {
+                Button(
+                    onClick = { onRelockRequest() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Icon(Icons.Default.Lock, contentDescription = "Lock")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("LOCK KIOSK")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewHorizontalMenuContent(
+    modifier: Modifier = Modifier,
+    bestSellers: List<MenuItem>,
+    categories: List<CategoryWithItems>,
+    onItemClick: (MenuItem) -> Unit
+) {
+    val theme = LocalBackgroundTheme.current
+
+    // Build the unified list: Best Sellers first, then remaining categories
+    val allSections = remember(bestSellers, categories) {
+        val otherCategories = categories.filter {
+            it.categoryName.lowercase() != "best sellers"
+        }
+        buildList {
+            if (bestSellers.isNotEmpty()) {
+                add(CategoryWithItems("Best Sellers", bestSellers))
+            }
+            addAll(otherCategories)
+        }
+    }
+
+    if (allSections.isEmpty()) return
+
+    // Number of item rows to display per category column
+    val itemsPerRow = 3
+    val itemWidth = 170.dp
+    val itemHeight = 220.dp
+    val itemSpacing = 12.dp
+
+    // Single continuous LazyRow spanning all categories
+    LazyRow(
+        modifier = modifier
+            .fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = 16.dp,
+            vertical = 12.dp
+        ),
+        horizontalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        allSections.forEachIndexed { sectionIndex, section ->
+            // Each category section as a single LazyRow item
+            item(key = "section_${section.categoryName}") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .padding(horizontal = 12.dp)
+                ) {
+                    // Category header
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                    ) {
+                        Icon(
+                            imageVector = categoryIcon(section.categoryName),
+                            contentDescription = null,
+                            tint = theme.accentColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = section.categoryName,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = theme.primaryTextColor
+                        )
+                    }
+
+                    // Items laid out as rows of `itemsPerRow`
+                    // Chunk items into rows and lay them out vertically
+                    val chunkedItems = remember(section.items) {
+                        section.items.chunked(itemsPerRow)
+                    }
+
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        chunkedItems.forEach { rowItems ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(itemSpacing)
+                            ) {
+                                rowItems.forEach { item ->
+                                MenuItemCard(
+                                    item = item,
+                                    modifier = Modifier
+                                        .width(itemWidth)
+                                        .height(itemHeight),
+                                    onClick = { onItemClick(item) }
+                                )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Vertical divider between categories
+            if (sectionIndex < allSections.size - 1) {
+                item(key = "divider_$sectionIndex") {
+                    VerticalDivider(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(vertical = 8.dp),
+                        thickness = 1.dp,
+                        color = theme.outlineVariantColor
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Portrait Menu Content ──────────────────────────────────────────
+/**
+ * Portrait-oriented menu layout with a **horizontal top category panel**
+ * and a vertically scrollable list of all categories and items below it.
+ *
+ * Layout structure:
+ * ┌─────────────────────────────┐
+ * │  [☆ Best] [☕ Bev] [🍕 ...]  │  ← horizontal scrollable top panel
+ * ├─────────────────────────────┤  ← divider
+ * │  ★ Best Sellers             │
+ * │  ┌───┐ ┌───┐ ┌───┐         │
+ * │  │   │ │   │ │   │         │  ← LazyColumn with grid-like rows
+ * │  └───┘ └───┘ └───┘         │
+ * │  ────────────────────       │  ← section divider
+ * │  ☕ Beverages               │
+ * │  ┌───┐ ┌───┐ ┌───┐         │
+ * │  ...                       │
+ * └─────────────────────────────┘
+ */
+@Composable
+private fun PortraitMenuContent(
+    modifier: Modifier = Modifier,
+    bestSellers: List<MenuItem>,
+    categories: List<CategoryWithItems>,
+    onItemClick: (MenuItem) -> Unit
+) {
+    val theme = LocalBackgroundTheme.current
+
+    // Build unified category list: Best Sellers first, then the rest
+    val allCategories = remember(bestSellers, categories) {
+        val otherCategories = categories.filter {
+            it.categoryName.lowercase() != "best sellers"
+        }
+        buildList {
+            if (bestSellers.isNotEmpty()) {
+                add(CategoryWithItems("Best Sellers", bestSellers))
+            }
+            addAll(otherCategories)
+        }
+    }
+
+    if (allCategories.isEmpty()) return
+
+    val scope = rememberCoroutineScope()
+    val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    // Keep track of which category is selected (derived from scroll position)
+    var selectedCategoryIndex by remember { mutableIntStateOf(0) }
+
+    // Calculate section start indices in the flat LazyColumn
+    // Pattern per section: header (1) + item rows (ceil(items / 2)) + divider (1, except last)
+    val itemsPerRow = 2
+    val sectionStartIndices = remember(allCategories) {
+        var runningIndex = 0
+        allCategories.mapIndexed { index, cat ->
+            val start = runningIndex
+            val rowCount = (cat.items.size + itemsPerRow - 1) / itemsPerRow
+            runningIndex += 1 + rowCount // header + rows
+            if (index < allCategories.size - 1) runningIndex += 1 // divider
+            start
+        }
+    }
+
+    // Update selected category based on scroll position
+    LaunchedEffect(lazyListState.firstVisibleItemIndex) {
+        val firstVisible = lazyListState.firstVisibleItemIndex
+        val newIndex = sectionStartIndices.indexOfLast { it <= firstVisible }
+        if (newIndex >= 0 && newIndex != selectedCategoryIndex) {
+            selectedCategoryIndex = newIndex
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+    ) {
+        // ── Top horizontal category panel ──────────────────────────
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp)
+        ) {
+            items(allCategories.size) { index ->
+                val isSelected = index == selectedCategoryIndex
+                val bgColor by androidx.compose.animation.animateColorAsState(
+                    targetValue = if (isSelected)
+                        theme.categorySelectedColor.copy(alpha = 0.2f)
+                    else
+                        Color.Transparent,
+                    animationSpec = tween(200),
+                    label = "portraitCatBg$index"
+                )
+                val iconTint by androidx.compose.animation.animateColorAsState(
+                    targetValue = if (isSelected)
+                        theme.categorySelectedColor
+                    else
+                        theme.categoryUnselectedColor,
+                    animationSpec = tween(200),
+                    label = "portraitCatTint$index"
+                )
+
+                Column(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(bgColor)
+                        .clickable {
+                            selectedCategoryIndex = index
+                            scope.launch {
+                                lazyListState.animateScrollToItem(sectionStartIndices[index])
+                            }
+                        }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = categoryIcon(allCategories[index].categoryName),
+                        contentDescription = allCategories[index].categoryName,
+                        tint = iconTint,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = allCategories[index].categoryName,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = iconTint,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+
+        // ── Divider between category panel and content ─────────────
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = theme.outlineVariantColor
+        )
+
+        // ── Vertically scrollable content ──────────────────────────
+        val itemSpacing = 16.dp
+
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                horizontal = 12.dp,
+                vertical = 16.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            allCategories.forEachIndexed { catIndex, category ->
+                // ── Category header: icon on top, label centered below ──
+                item(key = "header_$catIndex") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = if (catIndex == 0) 0.dp else 8.dp, bottom = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = categoryIcon(category.categoryName),
+                            contentDescription = null,
+                            tint = theme.accentColor,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = category.categoryName,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = theme.primaryTextColor,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                // ── Menu item cards in rows of `itemsPerRow` ────────────
+                val chunkedItems = category.items.chunked(itemsPerRow)
+                items(
+                    count = chunkedItems.size,
+                    key = { rowIndex -> "items_${catIndex}_row_$rowIndex" }
+                ) { rowIndex ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = itemSpacing),
+                        horizontalArrangement = Arrangement.spacedBy(itemSpacing)
+                    ) {
+                        chunkedItems[rowIndex].forEach { item ->
+                            MenuItemCard(
+                                item = item,
+                                modifier = Modifier.weight(1f),
+                                onClick = { onItemClick(item) }
+                            )
+                        }
+                        // Fill remaining space if row is not full
+                        val remaining = itemsPerRow - chunkedItems[rowIndex].size
+                        repeat(remaining) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+
+                // ── Section divider (except after last category) ────────
+                if (catIndex < allCategories.size - 1) {
+                    item(key = "divider_$catIndex") {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            thickness = 1.dp,
+                            color = theme.outlineVariantColor
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -217,39 +776,56 @@ private fun MenuContent(
     modifier: Modifier = Modifier,
     bestSellers: List<MenuItem>,
     categories: List<CategoryWithItems>,
-    weatherState: WeatherUiState,
     onItemClick: (MenuItem) -> Unit
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 0.dp)
-    ) {
-        item {
-            WeatherSection(weatherState)
+    // Build unified category list: Best Sellers first, then the rest
+    val allCategories = remember(bestSellers, categories) {
+        val otherCategories = categories.filter {
+            it.categoryName.lowercase() != "best sellers"
         }
-
-        if (bestSellers.isNotEmpty()) {
-            item {
-                BestSellersSection(
-                    items = bestSellers,
-                    onItemClick = onItemClick
-                )
+        buildList {
+            if (bestSellers.isNotEmpty()) {
+                add(CategoryWithItems("Best Sellers", bestSellers))
             }
+            addAll(otherCategories)
         }
+    }
 
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant)
-            )
-        }
+    if (allCategories.isEmpty()) return
 
-        val otherCategories = categories.filter { it.categoryName != "Best Sellers" }
-        items(otherCategories) { category ->
-            CategorySection(
-                category = category,
+    val scope = rememberCoroutineScope()
+    val pagerState = rememberPagerState(initialPage = 0) { allCategories.size }
+    var isPanelExpanded by remember { mutableStateOf(false) }
+
+    // Derive selected index from the pager's settled page
+    val selectedCategoryIndex by remember {
+        derivedStateOf { pagerState.currentPage }
+    }
+
+    Row(modifier = modifier.fillMaxSize()) {
+        // ── Left: collapsible side panel ──────────────────────────
+        SideCategoryPanel(
+            categories = allCategories.map { it.categoryName },
+            selectedIndex = selectedCategoryIndex,
+            isExpanded = isPanelExpanded,
+            onToggleExpand = { isPanelExpanded = !isPanelExpanded },
+            onCategoryClick = { index ->
+                isPanelExpanded = false
+                scope.launch { pagerState.animateScrollToPage(index) }
+            }
+        )
+
+        // ── Right: horizontal-paging category sections ───────────
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+            beyondViewportPageCount = 1,
+            key = { allCategories[it].categoryName }
+        ) { pageIndex ->
+            CategoryPageContent(
+                category = allCategories[pageIndex],
                 onItemClick = onItemClick
             )
         }
@@ -264,7 +840,7 @@ private fun CartOverlay(
 ) {
     val cartItems by viewModel.cartItems.collectAsState()
     var isVisible by remember { mutableStateOf(false) }
-    var isCheckingOut by remember { mutableStateOf(false) }
+    var isCheckoutTransition by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { isVisible = true }
@@ -272,16 +848,15 @@ private fun CartOverlay(
     fun animatedDismiss() {
         scope.launch {
             isVisible = false
-            delay(500)
+            delay(250) // Matches max exit tween (250ms)
             onDismiss()
         }
     }
 
     fun proceedToCheckout() {
-        isCheckingOut = true
         scope.launch {
+            isCheckoutTransition = true
             isVisible = false
-            delay(500)
             onProceedToCheckout()
         }
     }
@@ -292,8 +867,8 @@ private fun CartOverlay(
     ) {
         AnimatedVisibility(
             visible = isVisible,
-            enter = fadeIn(animationSpec = tween(400)),
-            exit = fadeOut(animationSpec = tween(400))
+            enter = fadeIn(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(if (isCheckoutTransition) 0 else 200))
         ) {
             Box(
                 modifier = Modifier
@@ -309,22 +884,27 @@ private fun CartOverlay(
 
         AnimatedVisibility(
             visible = isVisible,
-            enter = fadeIn(tween(400)) + scaleIn(
+            enter = fadeIn(tween(200)) + scaleIn(
                 initialScale = 0.1f,
                 transformOrigin = TransformOrigin(1f, 1f),
-                animationSpec = tween(500)
+                animationSpec = tween(250)
             ),
-            exit = fadeOut(tween(500)) + scaleOut(
+            exit = fadeOut(tween(if (isCheckoutTransition) 0 else 250)) + scaleOut(
                 targetScale = 0.1f,
                 transformOrigin = TransformOrigin(1f, 1f),
-                animationSpec = tween(500)
+                animationSpec = tween(if (isCheckoutTransition) 0 else 250)
             )
         ) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Card(
+                val cartConfig = LocalConfiguration.current
+                val isCartPortrait = cartConfig.orientation == Configuration.ORIENTATION_PORTRAIT
+                GlassCard(
                     modifier = Modifier
-                        .size(450.dp, 650.dp)
+                        .fillMaxWidth(if (isCartPortrait) 0.92f else 0.5f)
+                        .fillMaxHeight(if (isCartPortrait) 0.85f else 0.9f)
                         .clickable(enabled = false) { },
+                    shape = MaterialTheme.shapes.extraLarge,
+                    elevation = 6.dp
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {
                         Row(
@@ -343,6 +923,11 @@ private fun CartOverlay(
                                 Icon(Icons.Default.Close, contentDescription = "Close")
                             }
                         }
+                        val overlayTheme = LocalBackgroundTheme.current
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = overlayTheme.outlineVariantColor
+                        )
                         if (cartItems.isEmpty()) {
                             Box(
                                 modifier = Modifier
@@ -350,7 +935,7 @@ private fun CartOverlay(
                                     .fillMaxWidth(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("Your cart is empty", color = Color.Gray)
+                                Text("Your cart is empty", color = overlayTheme.secondaryTextColor)
                             }
                         } else {
                             LazyColumn(
@@ -372,10 +957,13 @@ private fun CartOverlay(
                         }
                         val total = cartItems.sumOf { it.menuItem.price * it.quantity }
 
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = overlayTheme.outlineVariantColor
+                        )
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .padding(20.dp)
                         ) {
                             Row(
@@ -387,7 +975,7 @@ private fun CartOverlay(
                                     "₱${String.format(Locale.getDefault(), "%.2f", total)}",
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = overlayTheme.accentColor
                                 )
                             }
 
@@ -398,7 +986,7 @@ private fun CartOverlay(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(56.dp),
-                                shape = RoundedCornerShape(12.dp),
+                                 shape = MaterialTheme.shapes.large,
                                 enabled = cartItems.isNotEmpty()
                             ) {
                                 Text("PROCEED TO CHECKOUT", fontWeight = FontWeight.Bold)
@@ -420,12 +1008,12 @@ private fun CartListItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val itemTheme = LocalBackgroundTheme.current
         AsyncImage(
-            model = cartItem.menuItem.imageUrl,
+            model = ImageUrlValidator.sanitize(cartItem.menuItem.imageUrl),
             contentDescription = null,
             modifier = Modifier
                 .size(60.dp)
@@ -440,7 +1028,7 @@ private fun CartListItem(
             Text(
                 "₱${String.format(Locale.getDefault(), "%.2f", cartItem.menuItem.price)}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = itemTheme.accentColor
             )
         }
 
@@ -455,7 +1043,7 @@ private fun CartListItem(
                 Icon(
                     Icons.Default.Remove,
                     contentDescription = "Decrease",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = itemTheme.accentColor,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -474,7 +1062,7 @@ private fun CartListItem(
                 Icon(
                     Icons.Default.Add,
                     contentDescription = "Increase",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = itemTheme.accentColor,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -492,9 +1080,10 @@ private fun CartListItem(
 private fun CheckoutOverlay(
     viewModel: MenuViewModel,
     onDismiss: () -> Unit,
-    onOrderConfirmed: () -> Unit
+    onOrderConfirmed: (Order) -> Unit
 ) {
     val cartItems by viewModel.cartItems.collectAsState()
+    var customerName by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier
@@ -512,12 +1101,15 @@ private fun CheckoutOverlay(
                 .background(Color.Black.copy(alpha = 0.5f))
         )
 
-        Card(
+        val checkoutConfig = LocalConfiguration.current
+        val isCheckoutPortrait = checkoutConfig.orientation == Configuration.ORIENTATION_PORTRAIT
+        GlassCard(
             modifier = Modifier
                 .align(Alignment.Center)
-                .size(450.dp, 650.dp)
+                .fillMaxWidth(if (isCheckoutPortrait) 0.92f else 0.5f)
+                .fillMaxHeight(if (isCheckoutPortrait) 0.85f else 0.9f)
                 .clickable(enabled = false) { },
-            shape = RoundedCornerShape(0.dp),
+            shape = RoundedCornerShape(16.dp),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 Row(
@@ -536,35 +1128,66 @@ private fun CheckoutOverlay(
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
+                val checkoutTheme = LocalBackgroundTheme.current
+                HorizontalDivider(
+                    thickness = 1.dp,
+                    color = checkoutTheme.outlineVariantColor
+                )
+
+                // ─── Customer Name Input ─────────────────────────────
+                OutlinedTextField(
+                    value = customerName,
+                    onValueChange = { customerName = it },
+                    label = { Text("Customer Name") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = checkoutTheme.accentColor,
+                        focusedLabelColor = checkoutTheme.accentColor
+                    )
+                )
+
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(cartItems) { item ->
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "${item.menuItem.name} x${item.quantity}",
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
                             )
                             Text(
                                 text = "₱${String.format(Locale.getDefault(), "%.2f", item.menuItem.price * item.quantity)}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = checkoutTheme.accentColor
                             )
                         }
                     }
                 }
                 val total = cartItems.sumOf { it.menuItem.price * it.quantity }
 
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(checkoutTheme.outlineVariantColor)
+                )
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                         .padding(20.dp)
                 ) {
                     Row(
@@ -580,7 +1203,7 @@ private fun CheckoutOverlay(
                             "₱${String.format(Locale.getDefault(), "%.2f", total)}",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = checkoutTheme.accentColor
                         )
                     }
 
@@ -588,13 +1211,14 @@ private fun CheckoutOverlay(
 
                     Button(
                         onClick = {
-                            viewModel.clearCart()
-                            onOrderConfirmed()
+                            val order = viewModel.confirmOrder(customerName)
+                            onOrderConfirmed(order)
                         },
+                        enabled = customerName.isNotBlank(),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Text("CONFIRM ORDER", fontWeight = FontWeight.Bold)
                     }

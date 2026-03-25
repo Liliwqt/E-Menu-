@@ -62,6 +62,7 @@ android {
     buildFeatures {
         compose = true
         resValues = true
+        buildConfig = true
     }
 }
 
@@ -89,6 +90,7 @@ dependencies {
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.database)
+    implementation(libs.firebase.auth)
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.analytics)
 
@@ -120,6 +122,9 @@ dependencies {
 
     // Timber - Logging
     implementation(libs.timber)
+
+    // Security - Encrypted SharedPreferences
+    implementation(libs.security.crypto)
 
     // Testing
     testImplementation(libs.junit)

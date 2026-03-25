@@ -17,6 +17,7 @@ material3 = "1.4.0"
 firebaseBom = "34.8.0"
 coroutinesPlayServices = "1.10.2"
 media3 = "1.9.1"
+securityCrypto = "1.1.0-alpha06"
 
 # Professional Stack
 hilt = "2.59.1"
@@ -64,6 +65,7 @@ androidx-compose-foundation-layout = { group = "androidx.compose.foundation", na
 firebase-database = { group = "com.google.firebase", name = "firebase-database", version.ref = "firebaseDatabase" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
 kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutinesPlayServices" }
 
 # Media3
@@ -95,6 +97,9 @@ timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "tim
 # Firebase Crashlytics + Analytics
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics", version.ref = "firebaseCrashlytics" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics", version.ref = "firebaseAnalytics" }
+
+# Security
+security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 
 # Testing
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }

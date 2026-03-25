@@ -1,89 +1,92 @@
 package com.example.androidkiosk.ui.menu.components
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.example.androidkiosk.model.CategoryWithItems
 import com.example.androidkiosk.model.MenuItem
+import com.example.androidkiosk.ui.theme.LocalBackgroundTheme
+import com.example.androidkiosk.util.ImageUrlValidator
 import java.util.Locale
 
+/**
+ * A glassmorphism menu item card showing an image, name, and price.
+ *
+ * **M3 Enhancements:**
+ * - Press scale animation (scales to 0.97 on press) with spring physics
+ * - Ripple indication on click for M3 feedback
+ * - M3 shape tokens (medium = 12dp rounded corners)
+ * - Uses M3 `surfaceContainerHigh` for info section instead of hardcoded black
+ * - Shared element key on the CARD (not image) for safe shared element transitions
+ *
+ * Accepts a [Modifier] so callers can control sizing — e.g. fixed
+ * dimensions in a LazyRow or fill-width in a LazyVerticalGrid column.
+ */
 @Composable
-fun CategorySection(
-    category: CategoryWithItems,
-    onItemClick: (MenuItem) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-    ) {
-        Text(
-            text = category.categoryName,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(category.items) { item ->
-                MenuItemCard(
-                    item = item,
-                    onClick = { onItemClick(item) }
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(MaterialTheme.colorScheme.outlineVariant)
-        )
-    }
-}
-
-@Composable
-private fun MenuItemCard(
+fun MenuItemCard(
     item: MenuItem,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .width(160.dp)
-            .height(200.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(5.dp)
+    val theme = LocalBackgroundTheme.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // Spring-based press scale animation
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.6f,
+            stiffness = 800f
+        ),
+        label = "cardScale"
+    )
+
+    GlassCard(
+        modifier = modifier
+            .aspectRatio(0.75f)   // 3:4 ratio — works well in grids
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = ripple(
+                    bounded = true,
+                    color = theme.accentColor
+                ),
+                onClick = onClick
+            ),
+        shape = MaterialTheme.shapes.medium,
+        elevation = 2.dp
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = item.imageUrl.ifEmpty {
-                    "https://via.placeholder.com/200x150?text=${item.name.replace(" ", "+")}"
-                },
+                model = ImageUrlValidator.sanitize(
+                    item.imageUrl.ifEmpty { null }
+                ) ?: "https://via.placeholder.com/200x150?text=${item.name.replace(" ", "+")}",
                 contentDescription = item.name,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -95,7 +98,6 @@ private fun MenuItemCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(0.4f)
-                    .background(MaterialTheme.colorScheme.surface)
                     .padding(8.dp),
                 verticalArrangement = Arrangement.Center
             ) {
@@ -111,7 +113,7 @@ private fun MenuItemCard(
                     text = "₱${String.format(Locale.getDefault(), "%.2f", item.price)}",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = theme.accentColor
                 )
             }
         }

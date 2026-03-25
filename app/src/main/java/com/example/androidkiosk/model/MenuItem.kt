@@ -23,3 +23,16 @@ data class CartItem(
     val price: Double,
     var quantity: Int
 )
+
+enum class PaymentMethod {
+    QR_CODE,
+    COUNTER
+}
+
+data class Order(
+    val orderNumber: String,
+    val customerName: String = "",
+    val items: List<CartItem>,
+    val total: Double,
+    val paymentMethod: PaymentMethod? = null
+)
