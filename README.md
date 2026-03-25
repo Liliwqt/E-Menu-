@@ -6,21 +6,26 @@
 ![Firebase](https://img.shields.io/badge/Firebase-Realtime%20DB-FFCA28?logo=firebase&logoColor=black)
 ![Hilt](https://img.shields.io/badge/Hilt-2.59.1-2196F3)
 
-A production-oriented Android kiosk app for restaurant ordering, built with Jetpack Compose, Hilt, Room, and Firebase Realtime Database.
+A production-oriented Android kiosk solution for restaurant ordering, built with Jetpack Compose, Hilt, Room, and Firebase Realtime Database.
 
-The app runs as a full-screen kiosk with admin unlock controls, dynamic theming from Firebase settings, and order logging for completed payments.
+It delivers a full-screen, locked-down ordering experience with admin unlock controls, dynamic branding via Firebase settings, and cloud order logging for completed transactions.
 
-## Current Features
+## Highlights
 
-- **Single-screen kiosk flow** — Menu browsing, item details, cart, checkout, and payment overlays are handled in one Compose flow (`MenuScreen`)
-- **Three menu layouts** — Select between `CURRENT`, `NEW_HORIZONTAL`, and `PORTRAIT` modes at runtime
-- **Category + best seller browsing** — Category pages, side panel navigation, and featured items
-- **Order pipeline** — Add to cart, quantity updates, checkout confirmation, payment method selection (QR/Counter)
-- **Firebase-backed data** — Menu categories, app settings (theme/background), and order logs
-- **Offline-first reads** — Room cache with Firebase sync
-- **Kiosk hardening** — Lock task mode, persistent home behavior, boot auto-launch, blocked system escape routes (when Device Owner is provisioned)
-- **Admin unlock controls** — PIN dialog trigger via long-press volume up or secret corner taps; encrypted PIN storage with lockout policy
-- **Observability** — Timber logging + Firebase Crashlytics/Analytics
+- **Unified kiosk journey** — Menu browse → item details → cart → checkout → payment in one Compose flow (`MenuScreen`)
+- **Adaptive presentation modes** — Runtime switch between `CURRENT`, `NEW_HORIZONTAL`, and `PORTRAIT` layouts
+- **Commerce-ready order flow** — Quantity management, checkout confirmation, and payment overlays (QR/Counter)
+- **Realtime cloud-backed content** — Firebase-driven categories and app settings with local Room caching
+- **Operational security** — Lock task enforcement, boot relaunch, home pinning, and controlled admin unlock
+- **Secure admin access** — Encrypted PIN storage, failed-attempt lockout policy, and multiple unlock triggers
+- **Production monitoring** — Timber logs, Firebase Crashlytics, and Firebase Analytics integration
+
+## Why This Project
+
+- Demonstrates end-to-end Android architecture (UI, domain, data, DI, and device admin controls)
+- Balances UX and kiosk security requirements in a real deployment scenario
+- Shows Firebase + Room integration for reliable online/offline behavior
+- Includes test coverage around core ordering/cart ViewModel logic
 
 ## Screenshots
 
@@ -51,7 +56,7 @@ The app runs as a full-screen kiosk with admin unlock controls, dynamic theming 
 
 ## Architecture Overview
 
-The project follows a clean layered structure with MVVM:
+The project follows a clean layered structure with MVVM separation:
 
 - **UI layer (`ui/`)**: Compose screens/components, overlays, theming, animation tokens
 - **Domain layer (`domain/repository/`)**: Repository interfaces
@@ -59,7 +64,7 @@ The project follows a clean layered structure with MVVM:
 - **Admin layer (`admin/`)**: Kiosk mode management, Device Admin, PIN/auth and unlock logging
 - **DI layer (`di/`)**: Hilt modules and app startup wiring
 
-### Runtime flow
+### Runtime Flow
 
 1. `MenuApplication` initializes Firebase persistence and anonymous sign-in
 2. `MainActivity` enforces kiosk behavior and hosts Compose content
@@ -75,16 +80,16 @@ Current app reads/writes these Realtime Database paths:
 - `branch2/appSettings` — Background image/theme settings
 - `branch2/logs/{orderNumber}` — Completed order logs
 
-Anonymous auth is required before listeners/writes attach. This project expects Firebase rules compatible with authenticated reads (for example, `auth != null`).
+Anonymous auth is required before listeners/writes attach. The app expects Firebase rules compatible with authenticated reads (for example, `auth != null`).
 
-## Kiosk / Admin Notes
+## Kiosk and Admin Controls
 
 - Main activity is registered as launcher + home category
 - Device Admin receiver is declared with `device_admin_policies`
 - Boot receiver relaunches the app after reboot (`BOOT_COMPLETED`, `LOCKED_BOOT_COMPLETED`)
 - Device Owner mode enables full lock task enforcement via `KioskManager`
 
-### Device Owner provisioning (development/provisioning step)
+### Device Owner Provisioning (development step)
 
 ```bash
 adb shell dpm set-device-owner com.example.androidkiosk/.admin.KioskDeviceAdminReceiver
@@ -117,7 +122,7 @@ app/src/main/java/com/example/androidkiosk/
 - Firebase project (Realtime Database + Auth + Crashlytics/Analytics)
 - `app/google-services.json` present
 
-## Getting Started
+## Quick Start
 
 1. **Clone**
    ```bash
@@ -139,7 +144,7 @@ app/src/main/java/com/example/androidkiosk/
    ./gradlew installDebug
    ```
 
-## Build, Test, Release
+## Build, Test, and Release
 
 ### Unit tests
 ```bash
@@ -161,4 +166,4 @@ For release signing, copy `keystore.properties.example` to `keystore.properties`
 ## Notes
 
 - Weather feature logic has been removed from active app behavior.
-- Legacy networking dependencies remain in Gradle for internal/compatibility needs.
+- Some networking dependencies remain in Gradle for internal/compatibility use.
