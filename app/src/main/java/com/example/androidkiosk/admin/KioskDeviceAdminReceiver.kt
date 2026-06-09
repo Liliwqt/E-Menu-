@@ -6,16 +6,7 @@ import android.content.Context
 import android.content.Intent
 import timber.log.Timber
 
-/**
- * Device Admin Receiver for kiosk mode.
- *
- * This receiver is registered as a Device Owner via ADB:
- * ```
- * adb shell dpm set-device-owner com.example.androidkiosk/.admin.KioskDeviceAdminReceiver
- * ```
- *
- * It must remain registered for Lock Task Mode and all Device Owner policies to function.
- */
+/** Device Admin Receiver for kiosk mode. */
 class KioskDeviceAdminReceiver : DeviceAdminReceiver() {
 
     override fun onEnabled(context: Context, intent: Intent) {

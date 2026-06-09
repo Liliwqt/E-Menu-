@@ -38,16 +38,10 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var pinManager: PinManager
     @Inject lateinit var unlockAttemptLogger: UnlockAttemptLogger
 
-    /**
-     * Whether the admin PIN dialog should be shown.
-     * Triggered by Volume Up long-press or secret corner tap.
-     */
+    /** Whether the admin PIN dialog should be shown. */
     private val showPinDialog = MutableStateFlow(false)
 
-    /**
-     * Whether the device is currently unlocked by admin.
-     * When true, kiosk restrictions are temporarily lifted.
-     */
+    /** Whether the device is currently unlocked by admin. */
     private val isAdminUnlocked = MutableStateFlow(false)
 
     // Volume Up long-press detection via Handler
@@ -222,14 +216,7 @@ class MainActivity : ComponentActivity() {
 
     // ─── Accessibility: Reduced Motion Preference ───────────────────────
 
-    /**
-     * Returns whether the user has enabled reduced motion accessibility setting.
-     * This reads from [Settings.Global.ANIMATOR_DURATION_SCALE].
-     *
-     * Returns true if:
-     * - Animator duration scale is 0.0 (no animation)
-     * - The setting could not be read (fallback to false)
-     */
+    /** Returns whether the user has enabled reduced motion accessibility setting. */
     private fun getReducedMotionPreference(): Boolean {
         return try {
             val value = Settings.Global.getFloat(

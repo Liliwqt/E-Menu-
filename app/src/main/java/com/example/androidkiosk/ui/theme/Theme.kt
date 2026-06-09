@@ -8,22 +8,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-/**
- * CompositionLocal for providing the background image URL from Firebase appSettings.
- * When null, the default drawable (R.drawable.menu_background) is used.
- */
+/** CompositionLocal for providing the background image URL from Firebase appSettings. */
 val LocalBackgroundImageUrl = staticCompositionLocalOf<String?> { null }
 
-/**
- * CompositionLocal for the active background theme resolved from Firebase.
- * Defaults to [BackgroundTheme.Dark].
- */
+/** CompositionLocal for the active background theme resolved from Firebase. */
 val LocalBackgroundTheme = staticCompositionLocalOf<BackgroundTheme> { BackgroundTheme.Dark }
 
-/**
- * CompositionLocal for reduced-motion accessibility preference.
- * When true, animations should be instant or minimal.
- */
+/** CompositionLocal for reduced-motion accessibility preference. */
 val LocalReducedMotion = staticCompositionLocalOf { false }
 
 @Composable

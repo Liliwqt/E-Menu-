@@ -74,17 +74,7 @@ import java.util.Locale
 // Payment Method Selection Overlay
 // ─────────────────────────────────────────────────────────
 
-/**
- * Payment method selection overlay with M3 enhancements.
- *
- * **M3 Enhancements:**
- * - M3 emphasized easing curves for smooth transitions
- * - Slide-in + scale entrance animation
- * - M3 shape tokens and typography
- * - M3 `HorizontalDivider` and `SuggestionChip` components
- * - Press scale animation on payment option cards
- * - Ripple feedback on interactive elements
- */
+/** Payment method selection overlay with M3 enhancements. */
 @Composable
 fun PaymentMethodOverlay(
     order: Order,
@@ -258,9 +248,7 @@ fun PaymentMethodOverlay(
     }
 }
 
-/**
- * Payment option card with M3 press scale animation and ripple.
- */
+/** Payment option card with M3 press scale animation and ripple. */
 @Composable
 private fun PaymentOptionCard(
     modifier: Modifier = Modifier,
@@ -346,15 +334,7 @@ private fun PaymentOptionCard(
 // QR Code Payment Overlay
 // ─────────────────────────────────────────────────────────
 
-/**
- * QR payment overlay with M3 enhancements.
- *
- * **M3 Enhancements:**
- * - M3 emphasized easing curves
- * - M3 `SuggestionChip` for supported apps
- * - M3 shape tokens and typography
- * - Slide-in entrance animation
- */
+/** QR payment overlay with M3 enhancements. */
 @Composable
 fun QRPaymentOverlay(
     order: Order,
@@ -550,14 +530,7 @@ fun QRPaymentOverlay(
 // Pay at Counter Overlay
 // ─────────────────────────────────────────────────────────
 
-/**
- * Counter payment overlay with M3 enhancements.
- *
- * **M3 Enhancements:**
- * - M3 emphasized easing curves
- * - M3 shape tokens and surface containers
- * - Slide-in entrance animation
- */
+/** Counter payment overlay with M3 enhancements. */
 @Composable
 fun CounterPaymentOverlay(
     order: Order,

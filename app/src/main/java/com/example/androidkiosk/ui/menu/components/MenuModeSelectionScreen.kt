@@ -46,13 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.example.androidkiosk.ui.menu.UIMode
 import com.example.androidkiosk.ui.theme.LocalBackgroundTheme
 
-/**
- * Full-screen initial chooser that appears before any menu content.
- * The user must pick either Vertical or Horizontal menu mode to proceed.
- *
- * Uses glassmorphism cards with spring-based press animations,
- * staggered entrance animations, and theme-aware colors.
- */
+/** Full-screen initial chooser that appears before any menu content. */
 @Composable
 fun MenuModeSelectionScreen(
     onModeSelected: (UIMode) -> Unit,
@@ -170,10 +164,7 @@ private fun MenuModeSelectionPreview() {
     }
 }
 
-/**
- * A glass card representing a single mode choice.
- * Features a spring-based press-scale animation and ripple feedback.
- */
+/** A glass card representing a single mode choice. */
 @Composable
 private fun ModeCard(
     icon: ImageVector,

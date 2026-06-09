@@ -34,13 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.example.androidkiosk.ui.theme.LocalBackgroundTheme
 import com.example.androidkiosk.ui.theme.LocalReducedMotion
 
-/**
- * Modifier extension that applies a shimmer loading effect.
- *
- * Creates an animated diagonal gradient sweep that simulates
- * content loading. Respects reduced-motion preferences by
- * showing a static placeholder when reduced motion is enabled.
- */
+/** Modifier extension that applies a shimmer loading effect. */
 @Composable
 fun Modifier.shimmerEffect(): Modifier {
     val theme = LocalBackgroundTheme.current
@@ -82,10 +76,7 @@ fun Modifier.shimmerEffect(): Modifier {
     }
 }
 
-/**
- * Shimmer placeholder matching [MenuItemCard] dimensions.
- * Shows a skeleton card with image area and text lines.
- */
+/** Shimmer placeholder matching [MenuItemCard] dimensions. */
 @Composable
 fun ShimmerMenuItemCard(
     modifier: Modifier = Modifier
@@ -136,9 +127,7 @@ fun ShimmerMenuItemCard(
     }
 }
 
-/**
- * Shimmer placeholder for a category header.
- */
+/** Shimmer placeholder for a category header. */
 @Composable
 fun ShimmerCategoryHeader(
     modifier: Modifier = Modifier
@@ -153,10 +142,7 @@ fun ShimmerCategoryHeader(
     )
 }
 
-/**
- * Full shimmer skeleton layout matching the menu content structure.
- * Shows a side panel skeleton + category header + 3-column grid of card skeletons.
- */
+/** Full shimmer skeleton layout matching the menu content structure. */
 @Composable
 fun ShimmerMenuSkeleton(
     modifier: Modifier = Modifier

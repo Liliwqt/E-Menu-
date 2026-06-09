@@ -70,18 +70,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-/**
- * Item detail overlay with M3 components and enhanced animations.
- *
- * **M3 Enhancements:**
- * - Container transform-style entrance (scale from card position)
- * - M3 `SuggestionChip` for availability badge
- * - M3 `FilledTonalIconButton` for quantity +/- and close
- * - M3 `HorizontalDivider` component
- * - M3 shape tokens and typography
- * - Emphasized easing curves for smooth transitions
- * - Spring-based dismiss animation
- */
+/** Item detail overlay with M3 components and enhanced animations. */
 @Composable
 fun ItemDetailOverlay(
     item: MenuItem,

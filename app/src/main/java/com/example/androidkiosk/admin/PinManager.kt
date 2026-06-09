@@ -10,16 +10,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import androidx.core.content.edit
 
-/**
- * Manages admin PIN validation for kiosk unlock.
- *
- * The PIN hash is persisted in [EncryptedSharedPreferences] backed by
- * the Android Keystore, so it survives app restarts and is protected
- * from extraction on non-rooted devices.
- *
- * The default PIN is "1234". On first launch, flagged via [isPinChanged]
- * so the admin can be prompted to change it.
- */
+/** Manages admin PIN validation for kiosk unlock. */
 @Singleton
 class PinManager @Inject constructor(
     context: Context
@@ -27,10 +18,7 @@ class PinManager @Inject constructor(
 
     private val prefs: SharedPreferences = createEncryptedPrefs(context)
 
-    /**
-     * SHA-256 hash of the current admin PIN, loaded from encrypted storage.
-     * Falls back to DEFAULT_PIN_HASH on first launch.
-     */
+    /** SHA-256 hash of the current admin PIN, loaded from encrypted storage. */
     private var pinHash: String
         get() = prefs.getString(KEY_PIN_HASH, DEFAULT_PIN_HASH) ?: DEFAULT_PIN_HASH
         set(value) {
@@ -51,11 +39,7 @@ class PinManager @Inject constructor(
     var lockoutUntil: Long = 0L
         private set
 
-    /**
-     * Validate the entered PIN against the stored hash.
-     *
-     * @return true if PIN matches, false otherwise.
-     */
+    /** Validate the entered PIN against the stored hash. */
     fun validatePin(input: String): Boolean {
         // Check lockout
         if (isLockedOut()) {

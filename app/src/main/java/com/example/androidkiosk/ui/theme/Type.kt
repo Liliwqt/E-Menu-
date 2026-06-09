@@ -8,19 +8,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.androidkiosk.R
 
-/**
- * Tangerine — elegant script font for decorative large text.
- */
+/** Tangerine — elegant script font for decorative large text. */
 val TangerineFamily = FontFamily(
     Font(R.font.tangerine_regular)
 )
 
-/**
- * Full Material Design 3 type scale with all 15 text styles.
- *
- * Follows the official M3 type scale specification:
- * https://m3.material.io/styles/typography/type-scale-tokens
- */
+/** Full Material Design 3 type scale with all 15 text styles. */
 val Typography = Typography(
     // ── Display ──────────────────────────────────────────────
     displayLarge = TextStyle(

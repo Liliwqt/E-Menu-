@@ -4,16 +4,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
-/**
- * Material Design 3 shape token system.
- *
- * Defines corner radii for all M3 shape categories:
- * - **Extra Small** (4dp): Chips, small badges, tooltips
- * - **Small** (8dp): Buttons, text fields, snackbars
- * - **Medium** (12dp): Cards, dialogs, small FABs
- * - **Large** (16dp): Large cards, navigation drawers
- * - **Extra Large** (28dp): Bottom sheets, large FABs, full-screen dialogs
- */
+/** Material Design 3 shape token system. */
 val AppShapes = Shapes(
     extraSmall = RoundedCornerShape(4.dp),
     small = RoundedCornerShape(8.dp),

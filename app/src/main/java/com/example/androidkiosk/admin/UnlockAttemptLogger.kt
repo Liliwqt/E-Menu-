@@ -8,12 +8,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Logs admin unlock attempts for audit purposes.
- *
- * Stores recent attempts in memory and logs them via Timber.
- * Can be extended to persist to Room or Firebase Analytics for fleet management.
- */
+/** Logs admin unlock attempts for audit purposes. */
 @Singleton
 class UnlockAttemptLogger @Inject constructor() {
 
@@ -24,12 +19,7 @@ class UnlockAttemptLogger @Inject constructor() {
     val recentAttempts: List<UnlockAttempt>
         get() = _attempts.sortedByDescending { it.timestamp }
 
-    /**
-     * Log an unlock attempt.
-     *
-     * @param method How the admin PIN dialog was triggered.
-     * @param success Whether the PIN was correct.
-     */
+    /** Log an unlock attempt. */
     fun logAttempt(method: UnlockMethod, success: Boolean) {
         val attempt = UnlockAttempt(
             timestamp = System.currentTimeMillis(),

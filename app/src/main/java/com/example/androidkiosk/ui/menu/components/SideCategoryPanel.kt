@@ -67,10 +67,7 @@ import androidx.compose.ui.unit.sp
 import com.example.androidkiosk.ui.animation.MotionTokens
 import com.example.androidkiosk.ui.theme.LocalBackgroundTheme
 
-/**
- * Maps a category name to a recognizable Material icon.
- * Falls back to [Icons.Default.Category] for unknown names.
- */
+/** Maps a category name to a recognizable Material icon. */
 fun categoryIcon(name: String): ImageVector {
     val lower = name.lowercase()
     return when {
@@ -92,25 +89,7 @@ fun categoryIcon(name: String): ImageVector {
     }
 }
 
-/**
- * A collapsible glassmorphism side panel showing category icons,
- * styled after M3 NavigationRail with spring-based animations.
- *
- * **M3 Enhancements:**
- * - Spring-based panel width animation (replaces tween)
- * - Ripple feedback on interactive elements
- * - Animated vertical selection indicator (NavigationRail style)
- * - Animated toggle icon rotation
- * - M3 HorizontalDivider component
- * - M3 shape tokens for rounded corners
- *
- * - **Collapsed**: narrow strip with icons only.
- * - **Expanded**: widens to reveal category labels next to icons.
- *
- * The selected category is highlighted with an animated indicator bar.
- * Tapping an icon when collapsed expands the panel.
- * Tapping a category when expanded navigates to it and collapses.
- */
+/** A collapsible glassmorphism side panel showing category icons, */
 @Composable
 fun SideCategoryPanel(
     categories: List<String>,

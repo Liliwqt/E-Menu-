@@ -31,19 +31,7 @@ import com.example.androidkiosk.ui.theme.LocalBackgroundTheme
 import com.example.androidkiosk.util.ImageUrlValidator
 import java.util.Locale
 
-/**
- * A glassmorphism menu item card showing an image, name, and price.
- *
- * **M3 Enhancements:**
- * - Press scale animation (scales to 0.97 on press) with spring physics
- * - Ripple indication on click for M3 feedback
- * - M3 shape tokens (medium = 12dp rounded corners)
- * - Uses M3 `surfaceContainerHigh` for info section instead of hardcoded black
- * - Shared element key on the CARD (not image) for safe shared element transitions
- *
- * Accepts a [Modifier] so callers can control sizing — e.g. fixed
- * dimensions in a LazyRow or fill-width in a LazyVerticalGrid column.
- */
+/** A glassmorphism menu item card showing an image, name, and price. */
 @Composable
 fun MenuItemCard(
     item: MenuItem,

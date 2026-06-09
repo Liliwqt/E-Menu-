@@ -2,9 +2,7 @@ package com.example.androidkiosk.model
 
 import com.google.firebase.database.ServerValue
 
-/**
- * Flattened representation of an order for Firebase logging at `branch2/logs/{orderNumber}`.
- */
+/** Flattened representation of an order for Firebase logging at `branch2/logs/{orderNumber}`. */
 data class OrderLogEntry(
     val orderNumber: String,
     val customerName: String,
@@ -35,9 +33,7 @@ data class OrderLogEntry(
     }
 }
 
-/**
- * Single line-item in the order log — a flat DTO (no nested MenuItem).
- */
+/** Single line-item in the order log — a flat DTO (no nested MenuItem). */
 data class OrderLogItem(
     val name: String,
     val quantity: Int,

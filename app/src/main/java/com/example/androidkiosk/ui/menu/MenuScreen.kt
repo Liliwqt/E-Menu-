@@ -551,24 +551,7 @@ private fun NewHorizontalMenuContent(
 }
 
 // ── Portrait Menu Content ──────────────────────────────────────────
-/**
- * Portrait-oriented menu layout with a **horizontal top category panel**
- * and a vertically scrollable list of all categories and items below it.
- *
- * Layout structure:
- * ┌─────────────────────────────┐
- * │  [☆ Best] [☕ Bev] [🍕 ...]  │  ← horizontal scrollable top panel
- * ├─────────────────────────────┤  ← divider
- * │  ★ Best Sellers             │
- * │  ┌───┐ ┌───┐ ┌───┐         │
- * │  │   │ │   │ │   │         │  ← LazyColumn with grid-like rows
- * │  └───┘ └───┘ └───┘         │
- * │  ────────────────────       │  ← section divider
- * │  ☕ Beverages               │
- * │  ┌───┐ ┌───┐ ┌───┐         │
- * │  ...                       │
- * └─────────────────────────────┘
- */
+/** Portrait-oriented menu layout with a **horizontal top category panel */
 @Composable
 private fun PortraitMenuContent(
     modifier: Modifier = Modifier,

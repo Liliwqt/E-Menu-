@@ -13,12 +13,7 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Manages Device Owner kiosk mode enforcement.
- *
- * Handles Lock Task Mode, system restriction policies, and kiosk lifecycle.
- * Gracefully degrades when device owner is not provisioned (development mode).
- */
+/** Manages Device Owner kiosk mode enforcement. */
 @Singleton
 class KioskManager @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -33,11 +28,7 @@ class KioskManager @Inject constructor(
     val isDeviceOwner: Boolean
         get() = dpm.isDeviceOwnerApp(packageName)
 
-    /**
-     * Enable full kiosk mode: Lock Task with all escape routes disabled.
-     *
-     * Must be called from an Activity context (for startLockTask).
-     */
+    /** Enable full kiosk mode: Lock Task with all escape routes disabled. */
     fun enableKioskMode(activity: Activity) {
         if (!isDeviceOwner) {
             Timber.w("Not device owner — kiosk mode skipped (development mode)")
@@ -74,9 +65,7 @@ class KioskManager @Inject constructor(
         }
     }
 
-    /**
-     * Disable kiosk mode — called after successful admin PIN authentication.
-     */
+    /** Disable kiosk mode — called after successful admin PIN authentication. */
     fun disableKioskMode(activity: Activity) {
         if (!isDeviceOwner) {
             Timber.w("Not device owner — disable kiosk skipped")
@@ -101,17 +90,12 @@ class KioskManager @Inject constructor(
         }
     }
 
-    /**
-     * Re-engage kiosk mode (e.g., admin relocking, or automatic re-lock on resume).
-     */
+    /** Re-engage kiosk mode (e.g., admin relocking, or automatic re-lock on resume). */
     fun relockKioskMode(activity: Activity) {
         enableKioskMode(activity)
     }
 
-    /**
-     * Apply device-wide user restrictions to prevent escape routes.
-     * Call once during initial provisioning or on every boot.
-     */
+    /** Apply device-wide user restrictions to prevent escape routes. */
     fun applyUserRestrictions() {
         if (!isDeviceOwner) return
 
@@ -140,9 +124,7 @@ class KioskManager @Inject constructor(
         }
     }
 
-    /**
-     * Remove user restrictions — called when admin needs full device access.
-     */
+    /** Remove user restrictions — called when admin needs full device access. */
     fun removeUserRestrictions() {
         if (!isDeviceOwner) return
 
@@ -170,10 +152,7 @@ class KioskManager @Inject constructor(
         }
     }
 
-    /**
-     * Set this app as the persistent preferred home activity.
-     * When the user presses Home (if somehow enabled), this app will launch.
-     */
+    /** Set this app as the persistent preferred home activity. */
     private fun setAsHomeApp() {
         if (!isDeviceOwner) return
 
@@ -193,9 +172,7 @@ class KioskManager @Inject constructor(
         }
     }
 
-    /**
-     * Clear the persistent preferred home activity (for admin unlock).
-     */
+    /** Clear the persistent preferred home activity (for admin unlock). */
     fun clearHomeApp() {
         if (!isDeviceOwner) return
 

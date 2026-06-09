@@ -5,22 +5,7 @@ import android.content.Context
 import android.content.Intent
 import timber.log.Timber
 
-/**
- * Receiver for BOOT_COMPLETED to auto-launch the kiosk app after device reboot.
- *
- * Registered in AndroidManifest.xml with:
- * ```xml
- * <receiver android:name=".admin.BootCompletedReceiver"
- *           android:exported="true"
- *           android:enabled="true"
- *           android:directBootAware="true">
- *     <intent-filter>
- *         <action android:name="android.intent.action.BOOT_COMPLETED" />
- *         <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
- *     </intent-filter>
- * </receiver>
- * ```
- */
+/** Receiver for BOOT_COMPLETED to auto-launch the kiosk app after device reboot. */
 class BootCompletedReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {

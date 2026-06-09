@@ -3,16 +3,7 @@ package com.example.androidkiosk.ui.theme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-/**
- * Defines the visual properties for each background theme.
- *
- * Each theme provides a complete color palette covering background,
- * text, accent, glass card, surface overlay, and M3 tonal container
- * colors to ensure readability and visual consistency across the entire UI.
- *
- * The theme is set by the web app via Firebase at
- * `branch2/appSettings/backgroundTheme` and fetched in real-time.
- */
+/** Defines the visual properties for each background theme. */
 sealed class BackgroundTheme(
     /** Solid background color (ignored when [usesBackgroundImage] is true). */
     val backgroundColor: Color,
@@ -268,10 +259,7 @@ sealed class BackgroundTheme(
     )
 
     companion object {
-        /**
-         * Resolves a Firebase theme name string to a [BackgroundTheme].
-         * Falls back to [Dark] for unknown/null values.
-         */
+        /** Resolves a Firebase theme name string to a [BackgroundTheme]. */
         fun fromName(name: String?): BackgroundTheme = when (name?.lowercase()?.trim()) {
             "light" -> Light
             "wooden" -> Wooden

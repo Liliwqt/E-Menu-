@@ -67,28 +67,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-/**
- * Admin PIN entry dialog for kiosk unlock.
- *
- * **M3 Enhancements:**
- * - M3 shape tokens for dialog and text field
- * - M3 `OutlinedButton` and `Button` with proper styling
- * - Spring-based shake animation on wrong PIN (physics-based)
- * - M3 `errorContainer` colors for lockout warning
- * - M3 emphasized easing curves for entrance/exit
- * - M3 typography tokens
- *
- * Features:
- * - Numeric PIN input with password masking
- * - Spring-based shake animation on wrong PIN
- * - Rate limiting: locked out after 3 failed attempts for 30 seconds
- * - Auto-dismiss after 30 seconds of inactivity
- * - Auto-focus on PIN field
- *
- * @param pinManager The [PinManager] instance for validation.
- * @param onUnlockSuccess Called when the correct PIN is entered.
- * @param onDismiss Called when the dialog is dismissed (Cancel or timeout).
- */
+/** Admin PIN entry dialog for kiosk unlock. */
 @Composable
 fun AdminPinDialog(
     pinManager: PinManager,

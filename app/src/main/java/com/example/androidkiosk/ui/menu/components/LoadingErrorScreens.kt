@@ -20,28 +20,13 @@ import androidx.compose.ui.unit.sp
 import com.example.androidkiosk.ui.animation.FadeInAnimatedItem
 import com.example.androidkiosk.ui.animation.ShimmerMenuSkeleton
 
-/**
- * Loading screen with shimmer skeleton effect.
- *
- * **M3 Enhancements:**
- * - Full shimmer skeleton layout matching the menu content structure
- * - Shows side panel skeleton + category header + 3-column grid of card skeletons
- * - Respects reduced-motion preferences (static gray when enabled)
- */
+/** Loading screen with shimmer skeleton effect. */
 @Composable
 fun LoadingScreen() {
     ShimmerMenuSkeleton(modifier = Modifier.fillMaxSize())
 }
 
-/**
- * Error screen with retry button.
- *
- * **M3 Enhancements:**
- * - M3 `FilledTonalButton` for retry action
- * - M3 `errorContainer` / `onErrorContainer` colors
- * - Fade-in + slide-up entrance animation
- * - M3 typography tokens
- */
+/** Error screen with retry button. */
 @Composable
 fun ErrorScreen(
     message: String,

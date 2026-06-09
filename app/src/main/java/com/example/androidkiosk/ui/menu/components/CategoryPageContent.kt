@@ -28,21 +28,7 @@ import com.example.androidkiosk.ui.animation.FadeInAnimatedItem
 import com.example.androidkiosk.ui.animation.StaggeredAnimatedItem
 import com.example.androidkiosk.ui.theme.LocalBackgroundTheme
 
-/**
- * A full-page category section displayed inside a [androidx.compose.foundation.pager.HorizontalPager] page.
- *
- * Shows the category title with its icon, an M3 divider,
- * and a 3-column vertical grid of [MenuItemCard]s with staggered
- * entrance animations that scrolls vertically when there are more
- * items than fit on screen.
- *
- * **M3 Enhancements:**
- * - Staggered fade-in + slide-up entrance animations for grid items
- * - M3 `HorizontalDivider` component
- * - M3 `surfaceContainerLow` tonal surface for category header
- * - M3 typography tokens
- * - Fade-in animation for empty state
- */
+/** A full-page category section displayed inside a [androidx.compose.foundation.pager.HorizontalPager] page. */
 @Composable
 fun CategoryPageContent(
     category: CategoryWithItems,

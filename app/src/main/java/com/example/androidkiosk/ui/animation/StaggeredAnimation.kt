@@ -10,21 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import com.example.androidkiosk.ui.theme.LocalReducedMotion
 
-/**
- * Wraps content with a staggered entrance animation.
- *
- * Each item fades in and slides up with a delay based on its [index],
- * creating a cascading reveal effect for list/grid items.
- *
- * Respects reduced-motion preferences — when enabled, content
- * appears instantly without animation.
- *
- * @param index The item's position in the list/grid (used to calculate stagger delay).
- * @param baseDelayMs Base delay per item in milliseconds (default 50ms).
- * @param durationMs Animation duration per item in milliseconds (default 300ms).
- * @param slideOffsetY Initial vertical offset in pixels for the slide-up effect.
- * @param content The composable content to animate.
- */
+/** Wraps content with a staggered entrance animation. */
 @Composable
 fun StaggeredAnimatedItem(
     index: Int,
@@ -80,14 +66,7 @@ fun StaggeredAnimatedItem(
     }
 }
 
-/**
- * Wraps content with a fade-in entrance animation (no slide).
- *
- * Useful for single elements that should fade in smoothly.
- *
- * @param durationMs Animation duration in milliseconds.
- * @param delayMs Delay before animation starts.
- */
+/** Wraps content with a fade-in entrance animation (no slide). */
 @Composable
 fun FadeInAnimatedItem(
     modifier: Modifier = Modifier,

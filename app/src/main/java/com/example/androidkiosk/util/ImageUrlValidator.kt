@@ -1,9 +1,6 @@
 package com.example.androidkiosk.util
 
-/**
- * Validates image URLs against an allowlist of approved domains
- * to prevent loading malicious content from compromised Firebase data.
- */
+/** Validates image URLs against an allowlist of approved domains */
 object ImageUrlValidator {
 
     private val ALLOWED_DOMAINS = setOf(
@@ -27,13 +24,7 @@ object ImageUrlValidator {
         "data:image/gif",
     )
 
-    /**
-     * Returns the URL if it belongs to an allowed domain, or null otherwise.
-     * Null/blank URLs pass through as null (callers use fallback images).
-     *
-     * Data URIs are restricted to safe raster types (no SVG) and capped
-     * at [MAX_DATA_URI_LENGTH] to prevent memory abuse.
-     */
+    /** Returns the URL if it belongs to an allowed domain, or null otherwise. */
     fun sanitize(url: String?): String? {
         if (url.isNullOrBlank()) return null
 

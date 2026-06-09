@@ -54,10 +54,7 @@ class MenuRepositoryImpl @Inject constructor(
         menuItemDao.clearAll()
     }
 
-    /**
-     * Waits for Firebase anonymous auth before attaching the ValueEventListener.
-     * Without auth, reads are denied by Firebase Security Rules (auth != null).
-     */
+    /** Waits for Firebase anonymous auth before attaching the ValueEventListener. */
     private fun ensureFirebaseSync() {
         if (firebaseListenerAttached) return
 

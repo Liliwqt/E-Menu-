@@ -7,13 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import com.example.androidkiosk.ui.theme.LocalReducedMotion
 
-/**
- * Material Design 3 motion tokens.
- *
- * Provides standardized duration, easing, and spring specifications
- * following the M3 motion guidelines:
- * https://m3.material.io/styles/motion/overview
- */
+/** Material Design 3 motion tokens. */
 @Suppress("unused", "ConstPropertyName")
 object MotionTokens {
 
@@ -38,37 +32,22 @@ object MotionTokens {
 
     // ── Easing Curves ────────────────────────────────────────────
 
-    /**
-     * Emphasized easing — the primary M3 easing curve.
-     * Used for most transitions. Starts fast, decelerates smoothly.
-     */
+    /** Emphasized easing — the primary M3 easing curve. */
     val EasingEmphasized = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
 
-    /**
-     * Emphasized decelerate — for entering elements.
-     * Elements arrive quickly and settle into place.
-     */
+    /** Emphasized decelerate — for entering elements. */
     val EasingEmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)
 
-    /**
-     * Emphasized accelerate — for exiting elements.
-     * Elements accelerate away from the user.
-     */
+    /** Emphasized accelerate — for exiting elements. */
     val EasingEmphasizedAccelerate = CubicBezierEasing(0.3f, 0.0f, 0.8f, 0.15f)
 
-    /**
-     * Standard easing — for subtle, utilitarian transitions.
-     */
+    /** Standard easing — for subtle, utilitarian transitions. */
     val EasingStandard = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
 
-    /**
-     * Standard decelerate — for elements entering the screen.
-     */
+    /** Standard decelerate — for elements entering the screen. */
     val EasingStandardDecelerate = CubicBezierEasing(0.0f, 0.0f, 0.0f, 1.0f)
 
-    /**
-     * Standard accelerate — for elements leaving the screen.
-     */
+    /** Standard accelerate — for elements leaving the screen. */
     val EasingStandardAccelerate = CubicBezierEasing(0.3f, 0.0f, 1.0f, 1.0f)
 
     // ── Spring Specifications ────────────────────────────────────
@@ -98,10 +77,7 @@ object MotionTokens {
     )
 }
 
-/**
- * Returns a tween animation spec that respects reduced-motion preferences.
- * When reduced motion is enabled, duration is set to 0 for instant transitions.
- */
+/** Returns a tween animation spec that respects reduced-motion preferences. */
 @Suppress("unused")
 @Composable
 fun <T> motionAwareTween(
@@ -114,10 +90,7 @@ fun <T> motionAwareTween(
     tween<T>(durationMillis = durationMillis, delayMillis = delayMillis, easing = easing)
 }
 
-/**
- * Returns a spring animation spec that respects reduced-motion preferences.
- * When reduced motion is enabled, uses very high stiffness for near-instant settle.
- */
+/** Returns a spring animation spec that respects reduced-motion preferences. */
 @Suppress("unused")
 @Composable
 fun <T> motionAwareSpring(

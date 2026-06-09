@@ -22,17 +22,7 @@ import com.example.androidkiosk.ui.theme.LocalBackgroundTheme
 @Suppress("unused")
 val GlassAccent = Color(0xFF4FC3F7)
 
-/**
- * A glassmorphism-styled card with a translucent, tinted appearance.
- *
- * The card uses a layered approach:
- * 1. **Tint layer** – a semi-transparent surface color so the background
- *    shows through, giving a glass-like translucent effect.
- * 2. **Gradient overlay** – a subtle diagonal gradient for depth and sheen.
- * 3. **Border** – a thin, accent-tinted border for glass-edge definition.
- *
- * Reads the active [LocalBackgroundTheme] to derive all colours automatically.
- */
+/** A glassmorphism-styled card with a translucent, tinted appearance. */
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,

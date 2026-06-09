@@ -9,16 +9,7 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Manages Firebase Anonymous Authentication for the kiosk app.
- *
- * The kiosk uses anonymous auth so that Firebase Security Rules can enforce
- * `auth != null` on reads — blocking unauthenticated access from anyone
- * who extracts the API key from the APK.
- *
- * Write access is reserved for web admin users who sign in with
- * email/password (enforced via `auth.token.email != null` in the rules).
- */
+/** Manages Firebase Anonymous Authentication for the kiosk app. */
 @Singleton
 class AuthManager @Inject constructor(
     private val firebaseAuth: FirebaseAuth
@@ -38,10 +29,7 @@ class AuthManager @Inject constructor(
         }
     }
 
-    /**
-     * Sign in anonymously. Safe to call multiple times — skips if already authenticated.
-     * Should be called during [android.app.Application.onCreate].
-     */
+    /** Sign in anonymously. Safe to call multiple times — skips if already authenticated. */
     suspend fun ensureSignedIn() {
         if (firebaseAuth.currentUser != null) {
             Timber.d("Already signed in (uid=%s)", firebaseAuth.currentUser?.uid)
