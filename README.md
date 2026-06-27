@@ -58,7 +58,7 @@ adb shell dpm set-device-owner com.example.androidkiosk/.admin.KioskDeviceAdminR
 
 ## Pushing this repository to GitHub (new repo)
 
-If you want me to create and push a new repository on GitHub for you, I can attempt to do that now using the `gh` CLI (requires you to be authenticated). Alternatives:
+If you want to create and push a new repository on GitHub, use the commands below. Alternatives:
 
 - Create a repo on GitHub manually and run:
 
@@ -77,14 +77,12 @@ git push -u origin main
 gh repo create <your-username>/<new-repo> --public --source=. --remote=origin --push
 ```
 
-Tell me if you want me to create the GitHub repo now; I can attempt it (I'll use `gh` if available, or else set the remote and push if you provide the repo URL).
+Tell me if you want to create the GitHub repo now; the remote can be set and pushed once the repository URL is ready.
 
 ---
 
-If you'd like, I can now:
+Next steps:
 
-1. Open a quick summary of files with multi-line comments (no changes were required),
-2. Apply the comment-cleaning script (already run; no source changes detected),
+1. Open a quick summary of files with multi-line comments.
+2. Apply the comment-cleaning script.
 3. Create and push a new GitHub repo for this project.
-
-Which of these should I do next? (I can create the repo now if you want me to.)
