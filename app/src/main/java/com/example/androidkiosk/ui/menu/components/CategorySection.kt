@@ -41,6 +41,7 @@ fun MenuItemCard(
     val theme = LocalBackgroundTheme.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val cardAlpha = if (item.available) 1f else 0.45f
 
     // Spring-based press scale animation
     val scale by animateFloatAsState(
@@ -58,8 +59,10 @@ fun MenuItemCard(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
+                alpha = cardAlpha
             }
             .clickable(
+                enabled = item.available,
                 interactionSource = interactionSource,
                 indication = ripple(
                     bounded = true,
@@ -93,6 +96,7 @@ fun MenuItemCard(
                     text = item.name,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
+                    color = if (item.available) MaterialTheme.colorScheme.onSurface else theme.secondaryTextColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -101,8 +105,17 @@ fun MenuItemCard(
                     text = "₱${String.format(Locale.getDefault(), "%.2f", item.price)}",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = theme.accentColor
+                    color = if (item.available) theme.accentColor else theme.secondaryTextColor
                 )
+                if (!item.available) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Unavailable",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = theme.secondaryTextColor
+                    )
+                }
             }
         }
     }

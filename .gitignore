@@ -18,4 +18,4 @@ local.properties
 # Firebase / signing secrets
 app/google-services.json
 keystore.properties
-*.jks
+release-keystore.jks

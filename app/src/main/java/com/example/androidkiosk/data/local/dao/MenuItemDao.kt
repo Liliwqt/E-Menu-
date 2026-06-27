@@ -11,16 +11,16 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface MenuItemDao {
 
-    @Query("SELECT * FROM menu_items WHERE available = 1 ORDER BY categoryName, name")
+    @Query("SELECT * FROM menu_items ORDER BY categoryName, name")
     fun getAllMenuItems(): Flow<List<MenuItemEntity>>
 
-    @Query("SELECT * FROM menu_items WHERE isBestSeller = 1 AND available = 1")
+    @Query("SELECT * FROM menu_items WHERE isBestSeller = 1")
     fun getBestSellers(): Flow<List<MenuItemEntity>>
 
-    @Query("SELECT DISTINCT categoryName FROM menu_items WHERE available = 1")
+    @Query("SELECT DISTINCT categoryName FROM menu_items")
     fun getCategories(): Flow<List<String>>
 
-    @Query("SELECT * FROM menu_items WHERE categoryName = :category AND available = 1")
+    @Query("SELECT * FROM menu_items WHERE categoryName = :category")
     fun getItemsByCategory(category: String): Flow<List<MenuItemEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
