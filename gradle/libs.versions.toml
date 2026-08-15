@@ -13,7 +13,7 @@ coroutinesPlayServices = "1.10.2"
 
 # Professional Stack
 hilt = "2.59.1"
-ksp = "2.3.9"
+ksp = "2.3.11"
 kotlinxSerialization = "1.8.1"
 room = "2.7.1"
 timber = "5.0.1"
