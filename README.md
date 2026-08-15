@@ -1,98 +1,211 @@
-# E-Menu Android Kiosk
+# E-Menu Smart Ordering System
 
-E-Menu is a self-service restaurant kiosk for Android. It supports multiple menu layouts, size-based pricing and inventory, offline menu caching, QR checkout, pay-at-counter orders, and device-owner kiosk controls.
+E-Menu is an Android tablet ordering application for cafés, restaurants, canteens, food stalls, and other menu-based food-service businesses. It provides menu browsing, cart and checkout workflows, Firebase synchronization, local menu caching, and dedicated-device kiosk controls.
 
-> The QR payment screen displays a static merchant QR. Selecting **I've Paid** records the customer's confirmation; it does not verify settlement with a bank or payment provider.
+> The QR checkout records a **customer-reported payment**. Selecting **I've Paid** does not verify settlement with a bank or payment provider.
+
+## Overview
+
+This repository contains the **Android tablet kiosk / ordering application** for the broader E-Menu system. The tablet supports two practical usage modes:
+
+- **Staff-assisted ordering:** staff carry the tablet and hand it to a customer for menu browsing and order entry.
+- **Table-side self-service:** the tablet remains at a table or ordering area for customers to place orders independently.
+
+Firebase synchronizes menu, inventory, settings, and order data with the broader E-Menu management platform. The separate web platform is used by authorized staff to process orders and access operational and AI-assisted analytics. Its source code and technology stack are not part of this repository.
 
 ## Features
 
-- Three menu layouts for different screen orientations
-- Firebase Realtime Database menu, inventory, settings, and order data
-- Room cache for temporary network interruptions
-- Size selection with price modifiers and per-size stock limits
-- Static GCash/InstaPay QR and pay-at-counter checkout
-- Retry-safe order submission using UUID order IDs
-- Anonymous Firebase authentication with a manual UID allowlist
-- Device-owner lock task, boot launch, secure-screen protection, and PIN-gated maintenance access
-- Firebase Storage image validation with bundled fallbacks
+- Category-based digital menu and best-seller browsing
+- Item details, size selection, price modifiers, and quantity controls
+- Per-size stock display and inventory-aware quantity limits
+- Cart management, customer-name entry, checkout, and order totals
+- Static GCash/InstaPay QR and pay-at-counter options
+- UUID-based, retry-safe order submission with tracked-stock updates
+- Anonymous Firebase authentication with manual kiosk UID authorization
+- Firebase synchronization for menus, inventory, appearance settings, and orders
+- Room-backed menu cache for temporary connectivity interruptions
+- Three selectable tablet layouts, including landscape and portrait modes
+- Device Owner and Lock Task support for dedicated-device operation
+- Restricted navigation, boot launch, secure-screen protection, and PIN-gated maintenance access
+- Firebase Storage image loading restricted to the configured bucket
+
+## Technology Stack
+
+| Technology | Purpose |
+| --- | --- |
+| Kotlin | Android application development |
+| Jetpack Compose and Material 3 | User interface and responsive tablet layouts |
+| Hilt | Dependency injection |
+| Room | Local menu cache |
+| Firebase Authentication | Anonymous kiosk identity |
+| Firebase Realtime Database | Menu, inventory, settings, and order synchronization |
+| Coil | Remote menu image loading |
+| Android Device Policy APIs | Device Owner, Lock Task, and kiosk restrictions |
+| JUnit, MockK, and Compose UI Test | JVM and Android testing |
+| Firebase Emulator Suite | Realtime Database Rules testing |
+
+## System Architecture
+
+```text
+Customer / Staff
+       |
+       v
+Android Tablet Kiosk
+       |
+       +---- Firebase Authentication
+       |
+       v
+Firebase Realtime Database
+       +---- Menu and settings
+       +---- Inventory
+       +---- Orders
+       |
+       v
+External Web Management Platform
+       |
+       v
+Admin / Host / Authorized Staff
+```
+
+The Android kiosk communicates with Firebase directly. The external management platform is maintained separately and is not implemented in this repository.
+
+## Order Flow
+
+```text
+Browse Menu
+    ↓
+Select Item
+    ↓
+Configure Size / Quantity
+    ↓
+Add to Cart
+    ↓
+Enter Customer Name
+    ↓
+Choose Payment Method
+    ↓
+Validate Order and Stock
+    ↓
+Submit Order to Firebase
+```
+
+Tracked inventory decrements and order creation are sent together. Failed submissions keep the cart available for retry.
+
+## Project Structure
+
+```text
+app/src/main/java/com/example/androidkiosk/
+├── admin/                 Authentication, PIN, boot, and kiosk controls
+├── data/
+│   ├── local/             Room database, DAO, and entity
+│   └── repository/        Firebase and Room repository implementations
+├── di/                    Hilt modules and application setup
+├── domain/repository/     Repository interfaces
+├── model/                 Menu, cart, order, payment, and settings models
+├── ui/
+│   ├── animation/         Compose animation helpers
+│   ├── main/              MainActivity
+│   ├── menu/              MenuScreen, MenuViewModel, and UI components
+│   └── theme/             Compose themes and typography
+└── util/                  Image URL validation
+```
+
+Key implementation classes include `MainActivity`, `MenuScreen`, `MenuViewModel`, `MenuRepositoryImpl`, `OrderRepositoryImpl`, `MenuDatabase`, `AuthManager`, and `KioskManager`.
 
 ## Requirements
 
-- Android Studio and Android SDK 36
+- Android Studio with Android SDK 36
 - JDK 21
-- Android 9 (API 28) or newer
-- Node.js 20 or 22 for Firebase Rules tests
-- Firebase Realtime Database with Anonymous Authentication enabled
+- Android 9 / API 28 or newer
+- A Firebase project with Realtime Database and Anonymous Authentication
+- Node.js 22 for Firebase Rules tests
+- An unprovisioned Android device when configuring Device Owner mode
 
-## Setup
+## Firebase Setup
 
-1. Clone the repository.
+1. Create a Firebase project and register an Android application with package name `com.example.androidkiosk`.
+2. Download `google-services.json` and place it at `app/google-services.json`.
+3. Enable **Anonymous** sign-in under Firebase Authentication.
+4. Create a Firebase Realtime Database.
+5. Review `database.rules.json`, replace the placeholder kiosk UIDs in the deployment copy, test the rules, and deploy them.
+6. Launch a newly installed kiosk and copy the anonymous UID shown on its registration screen.
+7. Add the UID to every required allowlist expression in the deployed rules, then select **Check registration** on the tablet.
+
+Do not commit a production `google-services.json`, real deployment UIDs, signing credentials, or locally populated rules.
+
+The application uses these database paths:
+
+```text
+branch2/
+├── categories/{category}/{item}
+├── inventory/{category}/{item}/sizes/{size}/stock
+├── appSettings
+└── logs/{orderId}
+```
+
+Authentication creates the kiosk identity; it does not authorize database access by itself. The UID must also be allowed by the deployed Realtime Database Rules.
+
+## Kiosk Setup
+
+Full kiosk enforcement requires Device Owner provisioning, normally on a factory-reset or otherwise unprovisioned device. Install the application, connect with ADB, and run:
+
+```bash
+adb shell dpm set-device-owner com.example.androidkiosk/.admin.KioskDeviceAdminReceiver
+```
+
+Release builds block ordering when Device Owner or Lock Task enforcement is unavailable. Debug builds remain usable for development and display a provisioning warning.
+
+The default maintenance PIN is `1234`. Replace it before placing a tablet in public use.
+
+## Local Cache and Connectivity
+
+Firebase menu updates are mapped into Room. Previously synchronized menu data can remain visible during a temporary connection problem, but inventory synchronization and order submission still require Firebase connectivity. The application should not be treated as a fully offline ordering system.
+
+## Build and Run
+
+1. Clone the repository and open it in Android Studio:
 
    ```bash
    git clone https://github.com/Liliwqt/E-Menu-.git
    cd E-Menu-
    ```
 
-2. Download `google-services.json` from Firebase and place it in `app/`.
-
-3. Add your Android SDK path to `local.properties` if Android Studio has not created it.
-
-   ```properties
-   sdk.dir=/absolute/path/to/Android/Sdk
-   ```
-
-4. Verify that `app/src/main/res/drawable-nodpi/merchant_qr.png` contains the correct merchant QR.
-
-5. Build the debug APK.
+2. Complete the Firebase setup and add `app/google-services.json`.
+3. Allow Android Studio to sync Gradle.
+4. Connect an Android tablet or start an emulator.
+5. Build and install the debug application:
 
    ```bash
-   ./gradlew assembleDebug
+   ./gradlew installDebug
    ```
 
-`google-services.json`, `local.properties`, signing properties, and keystores are intentionally excluded from Git.
-
-## Firebase access
-
-The application signs in anonymously on first launch and displays its Firebase UID. Add that UID to the allowlist in your deployed Realtime Database Rules, then select **Check registration** on the kiosk.
-
-The committed [`database.rules.json`](database.rules.json) uses placeholder UIDs. Replace them only in the copy you deploy; do not commit real device UIDs.
-
-Application data is stored below `branch2`:
-
-```text
-branch2/
-├── categories/{category}/{item}
-│   └── sizes/{size} = number | { priceModifier: number }
-├── inventory/{category}/{item}/sizes/{size}/stock
-├── appSettings
-└── logs/{orderId}
-```
-
-An item without an inventory record is treated as untracked. If an inventory record exists, any missing size is treated as out of stock.
-
-## Kiosk provisioning
-
-Device-owner mode normally requires a reset or unprovisioned Android device. Install the app, then run:
+To create APKs directly:
 
 ```bash
-adb shell dpm set-device-owner com.example.androidkiosk/.admin.KioskDeviceAdminReceiver
+./gradlew assembleDebug
+./gradlew assembleRelease
 ```
 
-Release builds require device-owner lock task before ordering is enabled. Debug builds show a development warning when device-owner mode is unavailable.
+APK output is written below `app/build/outputs/apk/`.
 
-The default maintenance PIN is `1234`. Change it before deploying the kiosk in a public location.
+For a signed release, copy `keystore.properties.example` to `keystore.properties` and add the local keystore values. The populated properties file and signing keystore must remain private.
 
-## Build and test
+## Testing
+
+The repository includes JVM tests for menu mapping, cart and inventory behavior, order state, image validation, and release kiosk gating. Android instrumentation tests cover PIN throttling and Compose checkout behavior. Firebase Emulator tests validate kiosk authorization, order creation, order ownership, and stock rules.
 
 ```bash
-# Unit tests
+# JVM tests
 ./gradlew testDebugUnitTest
 
-# Lint and instrumentation test compilation
-./gradlew lintDebug compileDebugAndroidTestKotlin
+# Android lint
+./gradlew lintDebug
 
-# Debug and release APKs
-./gradlew assembleDebug assembleRelease
+# Compile instrumentation tests
+./gradlew compileDebugAndroidTestKotlin
+
+# Run instrumentation tests on a connected device or emulator
+./gradlew connectedDebugAndroidTest
 
 # Firebase Realtime Database Rules tests
 cd firebase-tests
@@ -100,25 +213,33 @@ npm ci --ignore-scripts
 npm run test:emulator
 ```
 
-APK output is written to `app/build/outputs/apk/`.
-
-For a signed release, copy `keystore.properties.example` to `keystore.properties` and fill in the local signing values. Never commit the populated file or the keystore.
-
-## Security
-
-Read [`SECURITY.md`](SECURITY.md) before deploying or publishing a release. At minimum:
-
-- Deploy restrictive Realtime Database Rules.
-- Allow only approved kiosk UIDs.
-- Use a unique maintenance PIN.
-- Verify the bundled merchant QR.
-- Keep API keys and signing credentials outside the application and repository.
-- Define how long customer names and order records are retained.
-
-Run the repository credential check before publishing:
+Run the repository and APK credential scan from the project root:
 
 ```bash
 bash scripts/security_scan.sh
 ```
 
-This client records customer-reported QR payments and updates inventory directly. Use a trusted backend if payment verification or stronger inventory enforcement is required.
+## Security Notes
+
+- Anonymous Firebase authentication identifies a kiosk but does not automatically authorize it.
+- Deploy restrictive Realtime Database Rules before allowing customer use.
+- Give each kiosk only the permissions required for menu access and order submission.
+- Client-side validation and Device Owner controls are not substitutes for a trusted backend.
+- A public-facing tablet must not be treated as a trusted server or payment authority.
+- Review the deployment guidance in [`SECURITY.md`](SECURITY.md).
+
+### QR Payment Warning
+
+The bundled QR is static. **I've Paid** records `CUSTOMER_REPORTED_PAID`, not payment-provider-verified settlement. Staff must confirm the payment separately. Production-grade automatic verification requires a payment provider integration implemented through a trusted backend.
+
+## Documentation
+
+Detailed documentation covering system design, tablet deployment strategy, architecture, security, cloud synchronization, administrative workflows, and the wider E-Menu platform is maintained separately from this repository README.
+
+## Limitations
+
+- QR payments are not automatically verified.
+- Current inventory and order submission require Firebase connectivity.
+- Production database access requires explicit kiosk UID authorization.
+- Full kiosk enforcement requires correct Android Device Owner provisioning.
+- Direct client-side inventory updates provide less protection than a trusted backend.
