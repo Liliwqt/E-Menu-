@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuOpen
@@ -63,7 +62,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.androidkiosk.ui.animation.MotionTokens
 import com.example.androidkiosk.ui.theme.LocalBackgroundTheme
 
@@ -89,7 +87,7 @@ fun categoryIcon(name: String): ImageVector {
     }
 }
 
-/** A collapsible glassmorphism side panel showing category icons, */
+/** A collapsible side panel showing category icons, */
 @Composable
 fun SideCategoryPanel(
     categories: List<String>,
@@ -128,7 +126,9 @@ fun SideCategoryPanel(
             .clipToBounds()
             .padding(start = 6.dp, top = 6.dp, bottom = 6.dp),
         shape = MaterialTheme.shapes.large,
-        borderWidth = 1.dp
+        borderWidth = 1.dp,
+        elevation = 1.dp,
+        useTonalSurface = true
     ) {
         Column(
             modifier = Modifier
@@ -179,7 +179,7 @@ fun SideCategoryPanel(
                                 text = "Menu",
                                 color = panelTheme.accentColor,
                                 style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 softWrap = false
                             )
                         }
@@ -290,7 +290,7 @@ fun SideCategoryPanel(
                                         text = name,
                                         color = iconTint,
                                         style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                                         maxLines = 1,
                                         softWrap = false,
                                         overflow = TextOverflow.Ellipsis

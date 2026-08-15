@@ -63,6 +63,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -72,6 +73,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -83,6 +85,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.activity.compose.LocalActivity
 import com.example.androidkiosk.R
 import com.example.androidkiosk.admin.PinManager
+import com.example.androidkiosk.admin.KioskRegistrationStatus
 import com.example.androidkiosk.admin.UnlockMethod
 import com.example.androidkiosk.ui.theme.LocalBackgroundImageUrl
 import com.example.androidkiosk.ui.theme.LocalBackgroundTheme
@@ -92,6 +95,7 @@ import com.example.androidkiosk.model.CategoryWithItems
 import com.example.androidkiosk.model.MenuItem
 import com.example.androidkiosk.model.Order
 import com.example.androidkiosk.model.PaymentMethod
+import com.example.androidkiosk.model.PaymentStatus
 import com.example.androidkiosk.ui.menu.components.AdminPinDialog
 import com.example.androidkiosk.ui.menu.components.CategoryPageContent
 import com.example.androidkiosk.ui.menu.components.CounterPaymentOverlay
@@ -99,6 +103,7 @@ import com.example.androidkiosk.ui.menu.components.ErrorScreen
 import com.example.androidkiosk.ui.menu.components.GlassCard
 import com.example.androidkiosk.ui.menu.components.ItemDetailOverlay
 import com.example.androidkiosk.ui.menu.components.LoadingScreen
+import com.example.androidkiosk.ui.menu.components.KioskAuthorizationScreen
 import com.example.androidkiosk.ui.menu.components.MenuItemCard
 import com.example.androidkiosk.ui.menu.components.MenuModeSelectionScreen
 import com.example.androidkiosk.ui.menu.components.PaymentMethodOverlay
@@ -117,27 +122,30 @@ enum class UIMode {
     PORTRAIT
 }
 
-/** Tracks the source that triggered the PIN dialog for logging. */
-private var currentUnlockMethod: UnlockMethod = UnlockMethod.VOLUME_BUTTON
-
 @Composable
 fun MenuScreen(
     viewModel: MenuViewModel,
     showPinDialog: Boolean = false,
     isAdminUnlocked: Boolean = false,
+    unlockMethod: UnlockMethod = UnlockMethod.VOLUME_BUTTON,
     pinManager: PinManager? = null,
     onPinDialogDismiss: () -> Unit = {},
     onUnlockSuccess: (UnlockMethod) -> Unit = {},
     onRelockRequest: () -> Unit = {},
-    onPinDialogRequest: () -> Unit = {},
+    onPinDialogRequest: (UnlockMethod) -> Unit = {},
     onPinFailed: (UnlockMethod) -> Unit = {}
 ) {
+    val storageBucket = stringResource(R.string.google_storage_bucket)
     val bestSellers by viewModel.bestSellers.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val cartItems by viewModel.cartItems.collectAsState()
-    
+    val inventoryStock by viewModel.inventoryStock.collectAsState()
+    val submissionState by viewModel.submissionState.collectAsState()
+    val authorizationState by viewModel.authorizationState.collectAsState()
+    val isAuthorized = authorizationState.isAuthorized
+
     // Track UI mode — null means show the mode selection screen
     var selectedUIMode by remember { mutableStateOf<UIMode?>(null) }
 
@@ -149,9 +157,18 @@ fun MenuScreen(
     var showCounterPayment by remember { mutableStateOf(false) }
     var currentOrder by remember { mutableStateOf<Order?>(null) }
 
+    LaunchedEffect(isAuthorized) {
+        if (!isAuthorized) {
+            selectedItem = null
+            showCart = false
+            showCheckout = false
+            showPaymentMethod = false
+            showQRPayment = false
+            showCounterPayment = false
+        }
+    }
+
     // Secret corner tap state: 5 taps in top-right corner within 3 seconds
-    // Suppress: reset to emptyList() is intentional — Compose reads it on next recomposition
-    @Suppress("UNUSED_VALUE")
     var cornerTapTimestamps by remember { mutableStateOf(listOf<Long>()) }
 
     // Programmatically control screen orientation based on selected UI mode
@@ -170,7 +187,7 @@ fun MenuScreen(
 
     val blurAmount by animateFloatAsState(
         targetValue = if (selectedItem != null || showCart || showCheckout || showPaymentMethod || showQRPayment || showCounterPayment || showPinDialog) 10f else 0f,
-        animationSpec = tween(150), // Changed: 2x quicker (was 300ms)
+        animationSpec = tween(150),
         label = "blur"
     )
 
@@ -182,12 +199,13 @@ fun MenuScreen(
                 val cornerSize = 100.dp.toPx()
                 if (offset.x > size.width - cornerSize && offset.y < cornerSize) {
                     val now = System.currentTimeMillis()
-                    cornerTapTimestamps = (cornerTapTimestamps + now)
+                    val recentTaps = (cornerTapTimestamps + now)
                         .filter { it > now - 3000 } // Keep taps within last 3 seconds
-                    if (cornerTapTimestamps.size >= 5) {
+                    if (recentTaps.size >= 5) {
                         cornerTapTimestamps = emptyList()
-                        currentUnlockMethod = UnlockMethod.CORNER_TAP
-                        onPinDialogRequest()
+                        onPinDialogRequest(UnlockMethod.CORNER_TAP)
+                    } else {
+                        cornerTapTimestamps = recentTaps
                     }
                 }
             }
@@ -203,7 +221,7 @@ fun MenuScreen(
             if (bgTheme.usesBackgroundImage) {
                 // Light theme: use Firebase background image or default drawable
                 val backgroundImageUrl = LocalBackgroundImageUrl.current
-                val validatedBackgroundUrl = ImageUrlValidator.sanitize(backgroundImageUrl)
+                val validatedBackgroundUrl = ImageUrlValidator.sanitize(backgroundImageUrl, storageBucket)
                 if (!validatedBackgroundUrl.isNullOrBlank()) {
                     AsyncImage(
                         model = validatedBackgroundUrl,
@@ -238,6 +256,15 @@ fun MenuScreen(
                 modifier = Modifier.fillMaxSize(),
             ) { paddingValues ->
                 when {
+                    !isAuthorized -> KioskAuthorizationScreen(
+                        uid = authorizationState.uid,
+                        message = when (authorizationState.status) {
+                            KioskRegistrationStatus.ERROR -> authorizationState.errorMessage
+                            KioskRegistrationStatus.AUTHENTICATING -> "Checking Firebase kiosk registration…"
+                            else -> null
+                        },
+                        onRetry = viewModel::retryAuthorization
+                    )
                     isLoading -> LoadingScreen()
                     errorMessage != null -> {
                         ErrorScreen(
@@ -288,7 +315,7 @@ fun MenuScreen(
                 }
             }
         }
-        Box(
+        if (isAuthorized) Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(32.dp)
@@ -327,17 +354,18 @@ fun MenuScreen(
         }
 
         // ── Overlays ───────────────────────────────────────────
-        selectedItem?.let { item ->
+        if (isAuthorized) selectedItem?.let { item ->
             ItemDetailOverlay(
                 item = item,
+                stockBySize = inventoryStock["${item.categoryName}/${item.id}"],
                 onDismiss = { selectedItem = null },
-                onAddToCart = { menuItem, quantity -> 
-                    viewModel.addToCartWithQuantity(menuItem, quantity) 
+                onAddToCart = { menuItem, quantity, size ->
+                    viewModel.addToCartWithQuantity(menuItem, quantity, size)
                 }
             )
         }
 
-        if (showCart) {
+        if (isAuthorized && showCart) {
             CartOverlay(
                 viewModel = viewModel,
                 onDismiss = { showCart = false },
@@ -345,7 +373,7 @@ fun MenuScreen(
             )
         }
 
-        if (showCheckout) {
+        if (isAuthorized && showCheckout) {
             CheckoutOverlay(
                 viewModel = viewModel,
                 onDismiss = { showCheckout = false },
@@ -357,12 +385,11 @@ fun MenuScreen(
             )
         }
 
-        if (showPaymentMethod && currentOrder != null) {
+        if (isAuthorized && showPaymentMethod && currentOrder != null) {
             PaymentMethodOverlay(
                 order = currentOrder!!,
                 onDismiss = { showPaymentMethod = false },
                 onMethodSelected = { paymentMethod ->
-                    viewModel.selectPaymentMethod(paymentMethod)
                     showPaymentMethod = false
                     when (paymentMethod) {
                         PaymentMethod.QR_CODE -> {
@@ -376,9 +403,21 @@ fun MenuScreen(
             )
         }
 
-        if (showQRPayment && currentOrder != null) {
+        if (isAuthorized && showQRPayment && currentOrder != null) {
             QRPaymentOverlay(
                 order = currentOrder!!,
+                isSubmitting = submissionState.isSubmitting,
+                isComplete = submissionState.isComplete,
+                errorMessage = submissionState.errorMessage,
+                onPaid = {
+                    currentOrder?.let {
+                        viewModel.submitOrder(
+                            it,
+                            PaymentMethod.QR_CODE,
+                            PaymentStatus.CUSTOMER_REPORTED_PAID
+                        )
+                    }
+                },
                 onDismiss = {
                     showQRPayment = false
                     showPaymentMethod = false
@@ -388,9 +427,21 @@ fun MenuScreen(
             )
         }
 
-        if (showCounterPayment && currentOrder != null) {
+        if (isAuthorized && showCounterPayment && currentOrder != null) {
             CounterPaymentOverlay(
                 order = currentOrder!!,
+                isSubmitting = submissionState.isSubmitting,
+                isComplete = submissionState.isComplete,
+                errorMessage = submissionState.errorMessage,
+                onSubmit = {
+                    currentOrder?.let {
+                        viewModel.submitOrder(
+                            it,
+                            PaymentMethod.COUNTER,
+                            PaymentStatus.PAY_AT_COUNTER
+                        )
+                    }
+                },
                 onDismiss = {
                     showCounterPayment = false
                     showPaymentMethod = false
@@ -404,9 +455,9 @@ fun MenuScreen(
         if (showPinDialog && pinManager != null) {
             AdminPinDialog(
                 pinManager = pinManager,
-                onUnlockSuccess = { onUnlockSuccess(currentUnlockMethod) },
+                onUnlockSuccess = { onUnlockSuccess(unlockMethod) },
                 onDismiss = { onPinDialogDismiss() },
-                onPinFailed = { onPinFailed(currentUnlockMethod) }
+                onPinFailed = { onPinFailed(unlockMethod) }
             )
         }
 
@@ -467,7 +518,8 @@ private fun NewHorizontalMenuContent(
     // Single continuous LazyRow spanning all categories
     LazyRow(
         modifier = modifier
-            .fillMaxSize(),
+            .fillMaxSize()
+            .background(theme.surfaceOverlayColor.copy(alpha = 0.3f)),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
             horizontal = 16.dp,
             vertical = 12.dp
@@ -551,7 +603,24 @@ private fun NewHorizontalMenuContent(
 }
 
 // ── Portrait Menu Content ──────────────────────────────────────────
-/** Portrait-oriented menu layout with a **horizontal top category panel */
+/**
+ * Portrait-oriented menu layout with a **horizontal top category panel**
+ * and a vertically scrollable list of all categories and items below it.
+ *
+ * Layout structure:
+ * ┌─────────────────────────────┐
+ * │  [☆ Best] [☕ Bev] [🍕 ...]  │  ← horizontal scrollable top panel
+ * ├─────────────────────────────┤  ← divider
+ * │  ★ Best Sellers             │
+ * │  ┌───┐ ┌───┐ ┌───┐         │
+ * │  │   │ │   │ │   │         │  ← LazyColumn with grid-like rows
+ * │  └───┘ └───┘ └───┘         │
+ * │  ────────────────────       │  ← section divider
+ * │  ☕ Beverages               │
+ * │  ┌───┐ ┌───┐ ┌───┐         │
+ * │  ...                       │
+ * └─────────────────────────────┘
+ */
 @Composable
 private fun PortraitMenuContent(
     modifier: Modifier = Modifier,
@@ -597,22 +666,25 @@ private fun PortraitMenuContent(
     }
 
     // Update selected category based on scroll position
-    LaunchedEffect(lazyListState.firstVisibleItemIndex) {
-        val firstVisible = lazyListState.firstVisibleItemIndex
-        val newIndex = sectionStartIndices.indexOfLast { it <= firstVisible }
-        if (newIndex >= 0 && newIndex != selectedCategoryIndex) {
-            selectedCategoryIndex = newIndex
+    LaunchedEffect(lazyListState, sectionStartIndices) {
+        snapshotFlow { lazyListState.firstVisibleItemIndex }.collect { firstVisible ->
+            val newIndex = sectionStartIndices.indexOfLast { it <= firstVisible }
+            if (newIndex >= 0 && newIndex != selectedCategoryIndex) {
+                selectedCategoryIndex = newIndex
+            }
         }
     }
 
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(theme.surfaceOverlayColor.copy(alpha = 0.3f))
     ) {
         // ── Top horizontal category panel ──────────────────────────
         LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(theme.surfaceOverlayColor.copy(alpha = 0.15f))
                 .padding(vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp)
@@ -938,7 +1010,7 @@ private fun CartOverlay(
                                 }
                             }
                         }
-                        val total = cartItems.sumOf { it.menuItem.price * it.quantity }
+                        val total = cartItems.sumOf { it.price * it.quantity }
 
                         HorizontalDivider(
                             thickness = 1.dp,
@@ -947,6 +1019,7 @@ private fun CartOverlay(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .background(overlayTheme.surfaceOverlayColor)
                                 .padding(20.dp)
                         ) {
                             Row(
@@ -988,20 +1061,24 @@ private fun CartListItem(
     onRemove: (CartItem) -> Unit,
     onUpdateQuantity: (CartItem, Int) -> Unit
 ) {
+    val storageBucket = stringResource(R.string.google_storage_bucket)
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(LocalBackgroundTheme.current.surfaceOverlayColor, RoundedCornerShape(12.dp))
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         val itemTheme = LocalBackgroundTheme.current
         AsyncImage(
-            model = ImageUrlValidator.sanitize(cartItem.menuItem.imageUrl),
+            model = ImageUrlValidator.sanitize(cartItem.menuItem.imageUrl, storageBucket)
+                ?: R.drawable.menu_item_placeholder,
             contentDescription = null,
             modifier = Modifier
                 .size(60.dp)
                 .clip(RoundedCornerShape(8.dp)),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            error = painterResource(R.drawable.menu_item_placeholder)
         )
 
         Spacer(modifier = Modifier.width(12.dp))
@@ -1142,6 +1219,7 @@ private fun CheckoutOverlay(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .background(checkoutTheme.surfaceOverlayColor, RoundedCornerShape(10.dp))
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -1152,7 +1230,7 @@ private fun CheckoutOverlay(
                                 modifier = Modifier.weight(1f)
                             )
                             Text(
-                                text = "₱${String.format(Locale.getDefault(), "%.2f", item.menuItem.price * item.quantity)}",
+                                text = "₱${String.format(Locale.getDefault(), "%.2f", item.price * item.quantity)}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = checkoutTheme.accentColor
@@ -1160,17 +1238,18 @@ private fun CheckoutOverlay(
                         }
                     }
                 }
-                val total = cartItems.sumOf { it.menuItem.price * it.quantity }
+                val total = cartItems.sumOf { it.price * it.quantity }
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(1.dp)
-                        .background(checkoutTheme.outlineVariantColor)
+                        .background(checkoutTheme.surfaceOverlayColor)
                 )
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .background(checkoutTheme.surfaceOverlayColor)
                         .padding(20.dp)
                 ) {
                     Row(

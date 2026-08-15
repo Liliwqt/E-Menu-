@@ -2,6 +2,8 @@ package com.example.androidkiosk.ui.menu
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.androidkiosk.admin.AuthManager
+import com.example.androidkiosk.admin.KioskAuthorizationState
 import com.example.androidkiosk.domain.repository.AppSettingsRepository
 import com.example.androidkiosk.domain.repository.MenuRepository
 import com.example.androidkiosk.domain.repository.OrderRepository
@@ -11,6 +13,7 @@ import com.example.androidkiosk.model.CategoryWithItems
 import com.example.androidkiosk.model.MenuItem
 import com.example.androidkiosk.model.Order
 import com.example.androidkiosk.model.PaymentMethod
+import com.example.androidkiosk.model.PaymentStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,23 +27,32 @@ import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 
+data class OrderSubmissionState(
+    val orderId: String? = null,
+    val isSubmitting: Boolean = false,
+    val isComplete: Boolean = false,
+    val errorMessage: String? = null
+)
+
 @HiltViewModel
 class MenuViewModel @Inject constructor(
     private val menuRepository: MenuRepository,
     private val orderRepository: OrderRepository,
-    appSettingsRepository: AppSettingsRepository  // plain param — only used in property initializer
+    appSettingsRepository: AppSettingsRepository,
+    private val authManager: AuthManager
 ) : ViewModel() {
 
-    
+    val authorizationState: StateFlow<KioskAuthorizationState> = authManager.authorizationState
+
     val categories: StateFlow<List<CategoryWithItems>> = menuRepository
         .observeCategories()
         .catch { e ->
             Timber.e(e, "Error observing categories")
             _errorMessage.value = "Unable to load menu. Please try again."
+            _isLoading.value = false
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    
     val bestSellers: StateFlow<List<MenuItem>> = menuRepository
         .observeBestSellers()
         .catch { e -> Timber.e(e, "Error observing best sellers") }
@@ -51,6 +63,12 @@ class MenuViewModel @Inject constructor(
         .catch { e -> Timber.e(e, "Error observing app settings") }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppSettings())
 
+    val inventoryStock: StateFlow<Map<String, Map<String, Int>>> = menuRepository
+        .observeInventoryStock()
+        .catch { e -> Timber.e(e, "Error observing inventory stock") }
+        // Cart validation also reads this state when no composable is collecting it.
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -60,11 +78,8 @@ class MenuViewModel @Inject constructor(
     private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
     val cartItems: StateFlow<List<CartItem>> = _cartItems.asStateFlow()
 
-    private val _currentOrder = MutableStateFlow<Order?>(null)
-
-    companion object {
-        private const val MAX_ITEM_QUANTITY = 99
-    }
+    private val _submissionState = MutableStateFlow(OrderSubmissionState())
+    val submissionState: StateFlow<OrderSubmissionState> = _submissionState.asStateFlow()
 
     init {
         observeMenuData()
@@ -72,17 +87,12 @@ class MenuViewModel @Inject constructor(
 
     private fun observeMenuData() {
         viewModelScope.launch {
-            menuRepository.observeCategories()
-                .catch { _ ->
-                    _errorMessage.value = "Unable to load menu. Please try again."
+            categories.collect { cats ->
+                if (cats.isNotEmpty()) {
                     _isLoading.value = false
+                    _errorMessage.value = null
                 }
-                .collect { cats ->
-                    if (cats.isNotEmpty()) {
-                        _isLoading.value = false
-                        _errorMessage.value = null
-                    }
-                }
+            }
         }
     }
 
@@ -90,46 +100,46 @@ class MenuViewModel @Inject constructor(
         _isLoading.value = true
         _errorMessage.value = null
         viewModelScope.launch {
-            menuRepository.refresh()
-        }
-    }
-
-    fun addToCart(item: MenuItem) {
-        _cartItems.update { currentCart ->
-            val existingIndex = currentCart.indexOfFirst { it.menuItem.id == item.id }
-            if (existingIndex >= 0) {
-                val existing = currentCart[existingIndex]
-                if (existing.quantity >= MAX_ITEM_QUANTITY) return@update currentCart
-                currentCart.toMutableList().apply {
-                    this[existingIndex] = existing.copy(quantity = existing.quantity + 1)
+            runCatching { menuRepository.refresh() }
+                .onFailure { error ->
+                    Timber.e(error, "Unable to refresh menu")
+                    _isLoading.value = false
+                    _errorMessage.value = "Unable to load menu. Please try again."
                 }
-            } else {
-                currentCart + CartItem(
-                    menuItem = item,
-                    name = item.name,
-                    price = item.price,
-                    quantity = 1
-                )
-            }
         }
     }
 
-    fun addToCartWithQuantity(item: MenuItem, quantity: Int) {
+    fun retryAuthorization() {
+        viewModelScope.launch { authManager.refreshAuthorization() }
+    }
+
+    fun addToCartWithQuantity(item: MenuItem, quantity: Int, selectedSize: String = "") {
         if (quantity <= 0) return
+        val sizeKey = "${item.categoryName}/${item.id}"
+        val effectiveSize = resolveSelectedSize(item, selectedSize)
+        val stockSize = effectiveSize.ifEmpty { DEFAULT_STOCK_SIZE }
+        val itemStock = inventoryStock.value[sizeKey]
+        val maxStock = itemStock?.get(stockSize) ?: if (itemStock == null) MAX_ITEM_QUANTITY else 0
+        val limit = maxStock.coerceAtMost(MAX_ITEM_QUANTITY)
+        val effectivePrice = effectivePrice(item, effectiveSize)
         _cartItems.update { currentCart ->
-            val existingIndex = currentCart.indexOfFirst { it.menuItem.id == item.id }
+            val existingIndex = currentCart.indexOfFirst {
+                it.menuItem.id == item.id && it.selectedSize == effectiveSize
+            }
             if (existingIndex >= 0) {
                 val existing = currentCart[existingIndex]
-                val newQty = (existing.quantity + quantity).coerceAtMost(MAX_ITEM_QUANTITY)
+                if (limit <= 0) return@update currentCart
+                val newQty = (existing.quantity + quantity.coerceAtMost(limit)).coerceAtMost(limit)
                 currentCart.toMutableList().apply {
                     this[existingIndex] = existing.copy(quantity = newQty)
                 }
             } else {
+                if (limit <= 0) return@update currentCart
                 currentCart + CartItem(
                     menuItem = item,
-                    name = item.name,
-                    price = item.price,
-                    quantity = quantity.coerceAtMost(MAX_ITEM_QUANTITY)
+                    price = effectivePrice,
+                    quantity = quantity.coerceAtMost(limit),
+                    selectedSize = effectiveSize
                 )
             }
         }
@@ -137,7 +147,9 @@ class MenuViewModel @Inject constructor(
 
     fun removeFromCart(cartItem: CartItem) {
         _cartItems.update { currentCart ->
-            currentCart.filter { it.menuItem.id != cartItem.menuItem.id }
+            currentCart.filter {
+                !(it.menuItem.id == cartItem.menuItem.id && it.selectedSize == cartItem.selectedSize)
+            }
         }
     }
 
@@ -146,10 +158,20 @@ class MenuViewModel @Inject constructor(
             removeFromCart(cartItem)
             return
         }
-        val clampedQuantity = newQuantity.coerceAtMost(MAX_ITEM_QUANTITY)
+        val sizeKey = "${cartItem.menuItem.categoryName}/${cartItem.menuItem.id}"
+        val stockSize = cartItem.selectedSize.ifEmpty { DEFAULT_STOCK_SIZE }
+        val itemStock = inventoryStock.value[sizeKey]
+        val maxStock = itemStock?.get(stockSize) ?: if (itemStock == null) MAX_ITEM_QUANTITY else 0
+        val limit = maxStock.coerceAtMost(MAX_ITEM_QUANTITY)
+        val clampedQuantity = newQuantity.coerceAtMost(limit)
         _cartItems.update { currentCart ->
-            val index = currentCart.indexOfFirst { it.menuItem.id == cartItem.menuItem.id }
+            val index = currentCart.indexOfFirst {
+                it.menuItem.id == cartItem.menuItem.id && it.selectedSize == cartItem.selectedSize
+            }
             if (index >= 0) {
+                if (clampedQuantity <= 0) {
+                    return@update currentCart.filterIndexed { itemIndex, _ -> itemIndex != index }
+                }
                 currentCart.toMutableList().apply {
                     this[index] = this[index].copy(quantity = clampedQuantity)
                 }
@@ -159,38 +181,101 @@ class MenuViewModel @Inject constructor(
         }
     }
 
-    fun clearCart() {
+    private fun clearCart() {
         _cartItems.update { emptyList() }
     }
 
     fun confirmOrder(customerName: String): Order {
         val items = _cartItems.value
-        val total = items.sumOf { it.menuItem.price * it.quantity }
-        val orderNumber = UUID.randomUUID().toString().take(8).uppercase()
+        require(items.isNotEmpty()) { "Cannot submit an empty cart" }
+        val normalizedCustomerName = customerName.trim()
+        require(normalizedCustomerName.isNotEmpty()) { "Customer name is required" }
+        require(normalizedCustomerName.length <= MAX_CUSTOMER_NAME_LENGTH) {
+            "Customer name must be $MAX_CUSTOMER_NAME_LENGTH characters or fewer"
+        }
+        val total = items.sumOf { it.price * it.quantity }
+        val orderId = UUID.randomUUID().toString()
+        val orderNumber = orderId.take(8).uppercase()
         val order = Order(
+            id = orderId,
             orderNumber = orderNumber,
-            customerName = customerName.trim(),
+            customerName = normalizedCustomerName,
             items = items,
             total = total
         )
-        _currentOrder.value = order
-        clearCart()
+        _submissionState.value = OrderSubmissionState(orderId = order.id)
         return order
     }
 
-    fun selectPaymentMethod(method: PaymentMethod) {
-        _currentOrder.value = _currentOrder.value?.copy(paymentMethod = method)
-        // Log the completed order to Firebase at branch2/logs/{orderNumber}
-        _currentOrder.value?.let { order ->
-            viewModelScope.launch {
-                orderRepository.logOrder(order).onFailure { e ->
-                    Timber.e(e, "Failed to log order %s", order.orderNumber)
+    fun submitOrder(order: Order, method: PaymentMethod, status: PaymentStatus) {
+        if (!authorizationState.value.isAuthorized) {
+            _submissionState.value = OrderSubmissionState(
+                orderId = order.id,
+                errorMessage = "This kiosk is not registered. Ask an administrator to authorize its UID."
+            )
+            return
+        }
+        if (_submissionState.value.isSubmitting ||
+            (_submissionState.value.isComplete && _submissionState.value.orderId == order.id)
+        ) return
+
+        if (!hasEnoughStock(order)) {
+            _submissionState.value = OrderSubmissionState(
+                orderId = order.id,
+                errorMessage = "Some items no longer have enough stock. Return to the cart and update the order."
+            )
+            return
+        }
+
+        val submittedOrder = order.copy(paymentMethod = method, paymentStatus = status)
+        _submissionState.value = OrderSubmissionState(
+            orderId = submittedOrder.id,
+            isSubmitting = true
+        )
+        viewModelScope.launch {
+            orderRepository.submitOrder(submittedOrder)
+                .onSuccess {
+                    clearCart()
+                    _submissionState.value = OrderSubmissionState(
+                        orderId = submittedOrder.id,
+                        isComplete = true
+                    )
                 }
-            }
+                .onFailure { error ->
+                    Timber.e(error, "Failed to submit order %s", submittedOrder.orderNumber)
+                    _submissionState.value = OrderSubmissionState(
+                        orderId = submittedOrder.id,
+                        errorMessage = "Unable to submit the order. Check the connection and try again."
+                    )
+                }
         }
     }
 
     fun resetOrderFlow() {
-        _currentOrder.value = null
+        _submissionState.value = OrderSubmissionState()
+    }
+
+    private fun resolveSelectedSize(item: MenuItem, selectedSize: String): String {
+        if (item.sizes.isEmpty()) return ""
+        if (selectedSize in item.sizes) return selectedSize
+        return if (DEFAULT_STOCK_SIZE in item.sizes) DEFAULT_STOCK_SIZE else item.sizes.keys.first()
+    }
+
+    private fun effectivePrice(item: MenuItem, selectedSize: String): Double {
+        val adjusted = item.price + (item.sizes[selectedSize]?.priceModifier ?: 0.0)
+        return adjusted.takeIf(Double::isFinite)?.coerceAtLeast(0.0) ?: 0.0
+    }
+
+    private fun hasEnoughStock(order: Order): Boolean = order.items.all { cartItem ->
+        val itemKey = "${cartItem.menuItem.categoryName}/${cartItem.menuItem.id}"
+        val knownStock = inventoryStock.value[itemKey] ?: return@all true
+        val sizeKey = cartItem.selectedSize.ifEmpty { DEFAULT_STOCK_SIZE }
+        (knownStock[sizeKey] ?: 0) >= cartItem.quantity
+    }
+
+    private companion object {
+        const val MAX_ITEM_QUANTITY = 99
+        const val MAX_CUSTOMER_NAME_LENGTH = 80
+        const val DEFAULT_STOCK_SIZE = "Medium"
     }
 }

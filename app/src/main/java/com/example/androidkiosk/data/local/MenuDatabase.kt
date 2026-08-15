@@ -7,8 +7,8 @@ import com.example.androidkiosk.data.local.entity.MenuItemEntity
 
 @Database(
     entities = [MenuItemEntity::class],
-    version = 1,
-    exportSchema = false
+    version = 4,
+    exportSchema = true
 )
 abstract class MenuDatabase : RoomDatabase() {
     abstract fun menuItemDao(): MenuItemDao

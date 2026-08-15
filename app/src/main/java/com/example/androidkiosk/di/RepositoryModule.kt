@@ -14,7 +14,6 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-@Suppress("unused") // Used by Hilt at compile time
 abstract class RepositoryModule {
 
     @Binds

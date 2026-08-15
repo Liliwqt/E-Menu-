@@ -18,9 +18,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.androidkiosk.ui.theme.LocalBackgroundTheme
 
-/** Accent color for prices and highlights on glass surfaces (legacy fallback). */
-@Suppress("unused")
-val GlassAccent = Color(0xFF4FC3F7)
 
 /** A glassmorphism-styled card with a translucent, tinted appearance. */
 @Composable

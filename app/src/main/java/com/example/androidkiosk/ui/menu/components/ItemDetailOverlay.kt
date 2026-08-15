@@ -2,7 +2,6 @@ package com.example.androidkiosk.ui.menu.components
 
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -25,7 +24,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -34,13 +32,11 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,11 +53,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.example.androidkiosk.R
 import com.example.androidkiosk.model.MenuItem
 import com.example.androidkiosk.ui.animation.MotionTokens
 import com.example.androidkiosk.ui.theme.LocalBackgroundTheme
@@ -74,13 +72,37 @@ import java.util.Locale
 @Composable
 fun ItemDetailOverlay(
     item: MenuItem,
+    stockBySize: Map<String, Int>?,
+    initialSelectedSize: String = "",
     onDismiss: () -> Unit,
-    onAddToCart: (MenuItem, Int) -> Unit
+    onAddToCart: (MenuItem, Int, String) -> Unit
 ) {
+    val storageBucket = stringResource(R.string.google_storage_bucket)
     var isVisible by remember { mutableStateOf(false) }
     var isAddingToCart by remember { mutableStateOf(false) }
     var quantity by remember { mutableIntStateOf(1) }
+    var selectedSize by remember(item.id, item.sizes, initialSelectedSize) {
+        mutableStateOf(
+            when {
+                item.sizes.isEmpty() -> ""
+                initialSelectedSize in item.sizes -> initialSelectedSize
+                "Medium" in item.sizes -> "Medium"
+                else -> item.sizes.keys.first()
+            }
+        )
+    }
     val scope = rememberCoroutineScope()
+    val stockKey = selectedSize.ifEmpty { "Medium" }
+    val selectedStock = stockBySize?.get(stockKey) ?: if (stockBySize == null) 99 else 0
+    val maxQuantity = selectedStock.coerceIn(0, 99)
+    val effectivePrice = (item.price + (item.sizes[selectedSize]?.priceModifier ?: 0.0))
+        .takeIf(Double::isFinite)
+        ?.coerceAtLeast(0.0)
+        ?: 0.0
+
+    LaunchedEffect(maxQuantity) {
+        quantity = quantity.coerceIn(1, maxQuantity.coerceAtLeast(1))
+    }
 
     LaunchedEffect(Unit) { isVisible = true }
 
@@ -97,7 +119,7 @@ fun ItemDetailOverlay(
             isAddingToCart = true
             isVisible = false
             delay(250)
-            onAddToCart(item, quantity)
+            onAddToCart(item, quantity, selectedSize)
             onDismiss()
         }
     }
@@ -173,11 +195,13 @@ fun ItemDetailOverlay(
                         ) {
                             AsyncImage(
                                 model = ImageUrlValidator.sanitize(
-                                    item.imageUrl.ifEmpty { null }
-                                ) ?: "https://via.placeholder.com/400x300?text=${item.name.replace(" ", "+")}",
+                                    item.imageUrl.ifEmpty { null },
+                                    storageBucket
+                                ) ?: R.drawable.menu_item_placeholder,
                                 contentDescription = item.name,
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                                contentScale = ContentScale.Crop,
+                                error = painterResource(R.drawable.menu_item_placeholder)
                             )
 
                             // Close button — M3 FilledTonalIconButton
@@ -212,7 +236,7 @@ fun ItemDetailOverlay(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "₱${String.format(Locale.getDefault(), "%.2f", item.price)}",
+                                text = "₱${String.format(Locale.getDefault(), "%.2f", effectivePrice)}",
                                 style = MaterialTheme.typography.headlineLarge,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = detailTheme.accentColor
@@ -226,6 +250,50 @@ fun ItemDetailOverlay(
                             )
 
                             Spacer(modifier = Modifier.height(16.dp))
+                            if (item.sizes.isNotEmpty()) {
+                                Text(
+                                    text = "Choose a size",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = detailTheme.primaryTextColor
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    item.sizes.forEach { (sizeName, option) ->
+                                        val sizeStock = stockBySize?.get(sizeName)
+                                            ?: if (stockBySize == null) 99 else 0
+                                        FilterChip(
+                                            selected = selectedSize == sizeName,
+                                            onClick = {
+                                                selectedSize = sizeName
+                                                quantity = 1
+                                            },
+                                            enabled = sizeStock > 0,
+                                            label = {
+                                                val modifierLabel = if (option.priceModifier == 0.0) {
+                                                    sizeName
+                                                } else {
+                                                    "$sizeName +₱${String.format(Locale.getDefault(), "%.2f", option.priceModifier)}"
+                                                }
+                                                Text(modifierLabel)
+                                            }
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                            Text(
+                                text = if (selectedStock > 0) "$selectedStock available" else "Out of stock",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (selectedStock > 0) {
+                                    detailTheme.secondaryTextColor
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                }
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text = "Item ID: ${item.id}",
                                 style = MaterialTheme.typography.bodySmall,
@@ -278,8 +346,8 @@ fun ItemDetailOverlay(
                                         modifier = Modifier.width(36.dp)
                                     )
                                     FilledTonalIconButton(
-                                        onClick = { if (quantity < 99) quantity++ },
-                                        enabled = item.available && quantity < 99,
+                                        onClick = { if (quantity < maxQuantity) quantity++ },
+                                        enabled = item.available && quantity < maxQuantity,
                                         modifier = Modifier.size(40.dp),
                                         colors = IconButtonDefaults.filledTonalIconButtonColors(
                                             containerColor = Color.Transparent,
@@ -300,7 +368,7 @@ fun ItemDetailOverlay(
                                     modifier = Modifier
                                         .height(48.dp),
                                     shape = MaterialTheme.shapes.large,
-                                    enabled = item.available,
+                                    enabled = item.available && maxQuantity > 0,
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.primary,
                                         contentColor = MaterialTheme.colorScheme.onPrimary

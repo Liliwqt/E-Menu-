@@ -2,8 +2,8 @@ package com.example.androidkiosk.domain.repository
 
 import com.example.androidkiosk.model.Order
 
-/** Writes completed orders to Firebase for receipt / logging purposes. */
+/** Submits orders to Firebase and applies their inventory changes. */
 interface OrderRepository {
-    /** Log the given [order] to `branch2/logs/{orderNumber}`. */
-    suspend fun logOrder(order: Order): Result<Unit>
+    /** Idempotently submit [order] to `branch2/logs/{order.id}`. */
+    suspend fun submitOrder(order: Order): Result<Unit>
 }

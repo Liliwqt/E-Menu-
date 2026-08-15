@@ -17,12 +17,6 @@ interface MenuItemDao {
     @Query("SELECT * FROM menu_items WHERE isBestSeller = 1")
     fun getBestSellers(): Flow<List<MenuItemEntity>>
 
-    @Query("SELECT DISTINCT categoryName FROM menu_items")
-    fun getCategories(): Flow<List<String>>
-
-    @Query("SELECT * FROM menu_items WHERE categoryName = :category")
-    fun getItemsByCategory(category: String): Flow<List<MenuItemEntity>>
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<MenuItemEntity>)
 

@@ -1,44 +1,34 @@
 package com.example.androidkiosk.util
 
-/** Validates image URLs against an allowlist of approved domains */
+import java.net.URI
+
+/** Allows HTTPS image objects from exactly one configured Firebase Storage bucket. */
 object ImageUrlValidator {
-
-    private val ALLOWED_DOMAINS = setOf(
-        "firebasestorage.googleapis.com",
-        "storage.googleapis.com",
-        "lh3.googleusercontent.com",
-        "via.placeholder.com",
-        "i.imgur.com",
-        "imgur.com",
-    )
-
-    /** Maximum allowed length for data: URIs (~500 KB base64). */
-    private const val MAX_DATA_URI_LENGTH = 680_000
-
-    /** Safe raster image MIME types allowed in data: URIs. SVG is blocked (can contain scripts). */
-    private val ALLOWED_DATA_MIME_PREFIXES = listOf(
-        "data:image/png",
-        "data:image/jpeg",
-        "data:image/jpg",
-        "data:image/webp",
-        "data:image/gif",
-    )
-
-    /** Returns the URL if it belongs to an allowed domain, or null otherwise. */
-    fun sanitize(url: String?): String? {
-        if (url.isNullOrBlank()) return null
-
-        // Validate data: URIs — allow only safe raster types, block SVG (XSS risk)
-        if (url.startsWith("data:image/")) {
-            val isSafeType = ALLOWED_DATA_MIME_PREFIXES.any { url.startsWith(it) }
-            return if (isSafeType && url.length <= MAX_DATA_URI_LENGTH) url else null
-        }
+    fun sanitize(url: String?, storageBucket: String): String? {
+        if (url.isNullOrBlank() || storageBucket.isBlank()) return null
 
         return try {
-            val host = java.net.URI(url).host?.lowercase() ?: return null
-            if (ALLOWED_DOMAINS.any { host == it || host.endsWith(".$it") }) url else null
+            val uri = URI(url)
+            if (!uri.scheme.equals("https", ignoreCase = true)) return null
+            if (uri.userInfo != null || uri.fragment != null || uri.port !in listOf(-1, 443)) return null
+
+            val host = uri.host?.lowercase() ?: return null
+            val bucket = storageBucket.lowercase()
+            val path = uri.path ?: return null
+            if (path.split('/').any { it == "." || it == ".." }) return null
+
+            val isAllowed = when (host) {
+                FIREBASE_STORAGE_HOST -> path.startsWith("/v0/b/$bucket/o/")
+                GOOGLE_STORAGE_HOST -> path.startsWith("/$bucket/")
+                "$bucket.$GOOGLE_STORAGE_HOST" -> path.startsWith("/") && path.length > 1
+                else -> false
+            }
+            url.takeIf { isAllowed }
         } catch (_: Exception) {
             null
         }
     }
+
+    private const val FIREBASE_STORAGE_HOST = "firebasestorage.googleapis.com"
+    private const val GOOGLE_STORAGE_HOST = "storage.googleapis.com"
 }

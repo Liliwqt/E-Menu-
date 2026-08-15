@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -16,9 +17,71 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.androidkiosk.ui.animation.FadeInAnimatedItem
 import com.example.androidkiosk.ui.animation.ShimmerMenuSkeleton
+import com.example.androidkiosk.ui.theme.LocalBackgroundTheme
+
+@Composable
+fun KioskAuthorizationScreen(
+    uid: String?,
+    message: String?,
+    onRetry: () -> Unit
+) {
+    val theme = LocalBackgroundTheme.current
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(40.dp)
+        ) {
+            Text(
+                text = "Kiosk registration required",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = theme.primaryTextColor,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = message ?: "Ask a Firebase administrator to add this anonymous UID to the branch2 read/write allowlist.",
+                color = theme.secondaryTextColor,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            SelectionContainer {
+                Text(
+                    text = uid ?: "Waiting for anonymous authentication…",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = theme.primaryTextColor,
+                    textAlign = TextAlign.Center
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            FilledTonalButton(onClick = onRetry) { Text("Check registration") }
+        }
+    }
+}
+
+@Composable
+fun KioskProvisioningRequiredScreen(status: String) {
+    val theme = LocalBackgroundTheme.current
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(40.dp)) {
+            Text(
+                text = "Secure kiosk provisioning required",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = theme.primaryTextColor,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Ordering is disabled because device-owner lock task is not active. Status: $status",
+                color = theme.secondaryTextColor,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
 
 /** Loading screen with shimmer skeleton effect. */
 @Composable
@@ -32,6 +95,8 @@ fun ErrorScreen(
     message: String,
     onRetry: () -> Unit
 ) {
+    val theme = LocalBackgroundTheme.current
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -41,33 +106,40 @@ fun ErrorScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(32.dp)
             ) {
-                Text(text = "😕", fontSize = 64.sp)
-                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Oops! Something went wrong",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    text = "Something went wrong",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = theme.primaryTextColor,
+                    textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Please try again.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = theme.secondaryTextColor
+                )
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.error
+                    color = theme.secondaryTextColor
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 FilledTonalButton(
                     onClick = onRetry,
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        containerColor = theme.accentColor,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
-                    shape = MaterialTheme.shapes.small
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Text(
                         text = "Retry",
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.labelLarge
                     )
                 }

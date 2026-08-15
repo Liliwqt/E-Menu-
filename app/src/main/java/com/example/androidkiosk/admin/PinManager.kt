@@ -1,132 +1,99 @@
 package com.example.androidkiosk.admin
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
+import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
-import androidx.core.content.edit
 
-/** Manages admin PIN validation for kiosk unlock. */
+/** Validates the kiosk admin PIN and persists brute-force throttling state. */
 @Singleton
+@SuppressLint("ApplySharedPref", "UseKtx")
 class PinManager @Inject constructor(
-    context: Context
+    @ApplicationContext context: Context
 ) {
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
 
-    private val prefs: SharedPreferences = createEncryptedPrefs(context)
+    val failedAttempts: Int
+        get() = prefs.getInt(KEY_FAILED_ATTEMPTS, 0)
 
-    /** SHA-256 hash of the current admin PIN, loaded from encrypted storage. */
-    private var pinHash: String
-        get() = prefs.getString(KEY_PIN_HASH, DEFAULT_PIN_HASH) ?: DEFAULT_PIN_HASH
-        set(value) {
-            prefs.edit { putString(KEY_PIN_HASH, value) }
-        }
+    private val lockoutUntil: Long
+        get() = prefs.getLong(KEY_LOCKOUT_UNTIL, 0L)
 
-    /** Whether the admin has changed the default PIN at least once. */
-    val isPinChanged: Boolean
-        get() = prefs.getBoolean(KEY_PIN_CHANGED, false)
+    internal var clock: () -> Long = System::currentTimeMillis
 
-    /** Number of consecutive failed attempts in the current session. */
-    @Volatile
-    var failedAttempts: Int = 0
-        private set
-
-    /** Timestamp when lockout expires (0 = not locked out). */
-    @Volatile
-    var lockoutUntil: Long = 0L
-        private set
-
-    /** Validate the entered PIN against the stored hash. */
+    @Synchronized
     fun validatePin(input: String): Boolean {
-        // Check lockout
         if (isLockedOut()) {
             Timber.w("PIN validation rejected — lockout active")
             return false
         }
 
-        val inputHash = sha256(input)
-        val isValid = inputHash == pinHash
-
+        val isValid = MessageDigest.isEqual(
+            sha256(input),
+            DEFAULT_PIN_HASH
+        )
         if (isValid) {
-            failedAttempts = 0
-            lockoutUntil = 0L
+            clearThrottle()
             Timber.i("PIN validated successfully")
-        } else {
-            failedAttempts++
-            Timber.w("Invalid PIN attempt")
-
-            // Exponential lockout: 60s → 120s → 240s after MAX_ATTEMPTS consecutive failures
-            if (failedAttempts >= MAX_ATTEMPTS) {
-                val multiplier = (failedAttempts / MAX_ATTEMPTS).coerceAtMost(3)
-                val duration = LOCKOUT_DURATION_MS * (1L shl (multiplier - 1))
-                lockoutUntil = System.currentTimeMillis() + duration
-                Timber.w("Lockout activated for %d seconds", duration / 1000)
-            }
+            return true
         }
 
-        return isValid
+        val attempts = failedAttempts + 1
+        val editor = prefs.edit().putInt(KEY_FAILED_ATTEMPTS, attempts)
+        if (attempts >= MAX_ATTEMPTS) {
+            editor.putLong(KEY_LOCKOUT_UNTIL, clock() + LOCKOUT_DURATION_MS)
+            Timber.w("PIN lockout activated")
+        } else {
+            Timber.w("Invalid PIN attempt")
+        }
+        // Security state must reach disk before a kiosk process can be terminated.
+        editor.commit()
+        return false
     }
 
-    /** Whether the PIN entry is currently locked out due to too many failed attempts. */
+    @Synchronized
     fun isLockedOut(): Boolean {
         if (lockoutUntil == 0L) return false
-        if (System.currentTimeMillis() >= lockoutUntil) {
-            // Lockout expired — reset
-            lockoutUntil = 0L
-            failedAttempts = 0
-            return false
-        }
-        return true
+        if (clock() < lockoutUntil) return true
+        clearThrottle()
+        return false
     }
 
-    /** Remaining lockout time in milliseconds, or 0 if not locked out. */
     fun remainingLockoutMs(): Long {
         if (!isLockedOut()) return 0L
-        return (lockoutUntil - System.currentTimeMillis()).coerceAtLeast(0L)
+        return (lockoutUntil - clock()).coerceAtLeast(0L)
     }
 
-    /** Reset the failed attempt counter (e.g., after a successful unlock or dialog dismiss). */
-    fun resetAttempts() {
-        failedAttempts = 0
-        lockoutUntil = 0L
+    private fun clearThrottle() {
+        // A successful PIN or expired lockout must also survive an immediate process exit.
+        prefs.edit()
+            .remove(KEY_FAILED_ATTEMPTS)
+            .remove(KEY_LOCKOUT_UNTIL)
+            .commit()
     }
 
-    private fun sha256(input: String): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val hashBytes = digest.digest(input.toByteArray(Charsets.UTF_8))
-        return hashBytes.joinToString("") { "%02x".format(it) }
-    }
+    private fun sha256(input: String): ByteArray =
+        MessageDigest.getInstance("SHA-256").digest(input.toByteArray(Charsets.UTF_8))
 
     companion object {
-        /** Default PIN: "1234" */
-        private const val DEFAULT_PIN_HASH =
-            "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"
+        /** Accepted residual risk: the initial and only configured PIN is 1234. */
+        private val DEFAULT_PIN_HASH = byteArrayOf(
+            0x03, 0xac.toByte(), 0x67, 0x42, 0x16, 0xf3.toByte(), 0xe1.toByte(), 0x5c,
+            0x76, 0x1e, 0xe1.toByte(), 0xa5.toByte(), 0xe2.toByte(), 0x55, 0xf0.toByte(), 0x67,
+            0x95.toByte(), 0x36, 0x23, 0xc8.toByte(), 0xb3.toByte(), 0x88.toByte(), 0xb4.toByte(), 0x45,
+            0x9e.toByte(), 0x13, 0xf9.toByte(), 0x78, 0xd7.toByte(), 0xc8.toByte(), 0x46, 0xf4.toByte()
+        )
 
-        /** Maximum failed attempts before lockout. */
         const val MAX_ATTEMPTS = 3
-
-        /** Base lockout duration: 60 seconds (doubles for each subsequent lockout). */
         const val LOCKOUT_DURATION_MS = 60_000L
 
-        private const val PREFS_FILE = "kiosk_secure_prefs"
-        private const val KEY_PIN_HASH = "pin_hash"
-        private const val KEY_PIN_CHANGED = "pin_changed"
-
-        private fun createEncryptedPrefs(context: Context): SharedPreferences {
-            val masterKey = MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
-
-            return EncryptedSharedPreferences.create(
-                context,
-                PREFS_FILE,
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
-        }
+        private const val PREFS_FILE = "kiosk_security_state"
+        private const val KEY_FAILED_ATTEMPTS = "failed_attempts"
+        private const val KEY_LOCKOUT_UNTIL = "lockout_until"
     }
 }

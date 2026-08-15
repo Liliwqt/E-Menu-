@@ -9,9 +9,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -37,8 +36,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -61,6 +58,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import com.example.androidkiosk.R
 import com.example.androidkiosk.model.Order
 import com.example.androidkiosk.model.PaymentMethod
@@ -205,8 +204,8 @@ fun PaymentMethodOverlay(
                             PaymentOptionCard(
                                 modifier = Modifier.weight(1f),
                                 icon = Icons.Default.QrCode2,
-                                title = "QR Code Payment",
-                                subtitle = "GCash, Maya, BPI, BDO,\nand other QR Ph apps",
+                                title = "GCash Payment",
+                                subtitle = "Scan the merchant QR\nwith the GCash app",
                                 accentColor = MaterialTheme.colorScheme.primary,
                                 onClick = {
                                     scope.launch {
@@ -334,16 +333,40 @@ private fun PaymentOptionCard(
 // QR Code Payment Overlay
 // ─────────────────────────────────────────────────────────
 
-/** QR payment overlay with M3 enhancements. */
+/** Static merchant-QR payment. Customer acknowledgement is not bank verification. */
 @Composable
 fun QRPaymentOverlay(
     order: Order,
+    isSubmitting: Boolean,
+    isComplete: Boolean,
+    errorMessage: String? = null,
+    onPaid: () -> Unit,
     onDismiss: () -> Unit
 ) {
     var isVisible by remember { mutableStateOf(false) }
+    var actionPending by remember(order.id) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { isVisible = true }
+
+    LaunchedEffect(isComplete) {
+        if (isComplete) {
+            delay(1500)
+            isVisible = false
+            delay(250)
+            onDismiss()
+        }
+    }
+
+    LaunchedEffect(isSubmitting, isComplete, errorMessage) {
+        if (!isSubmitting && !isComplete && errorMessage != null) actionPending = false
+    }
+
+    fun reportPaidOnce() {
+        if (actionPending || isSubmitting || isComplete) return
+        actionPending = true
+        onPaid()
+    }
 
     fun animatedDismiss() {
         scope.launch {
@@ -366,7 +389,7 @@ fun QRPaymentOverlay(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.22f))
+                    .background(Color.Black.copy(alpha = 0.5f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -398,7 +421,7 @@ fun QRPaymentOverlay(
                 GlassCard(
                     modifier = Modifier
                         .fillMaxWidth(if (isQrPortrait) 0.92f else 0.55f)
-                        .fillMaxHeight(if (isQrPortrait) 0.88f else 0.92f)
+                        .fillMaxHeight(if (isQrPortrait) 0.82f else 0.85f)
                         .clickable(enabled = false) { },
                     shape = MaterialTheme.shapes.extraLarge,
                     elevation = 6.dp
@@ -416,22 +439,24 @@ fun QRPaymentOverlay(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Scan to Pay",
+                                text = "GCash Payment",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.ExtraBold
                             )
-                            IconButton(onClick = { animatedDismiss() }) {
+                            IconButton(
+                                onClick = { animatedDismiss() },
+                                enabled = !isSubmitting && !actionPending
+                            ) {
                                 Icon(Icons.Default.Close, contentDescription = "Close")
                             }
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Order number badge with M3 surface container
                         val qrTheme = LocalBackgroundTheme.current
                         Box(
                             modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = "Order #${order.orderNumber}",
@@ -441,67 +466,145 @@ fun QRPaymentOverlay(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // QR Code Image
-                        Box(
-                            modifier = Modifier
-                                .size(240.dp)
-                                .clip(MaterialTheme.shapes.large)
-                                .border(
-                                    2.dp,
-                                    MaterialTheme.colorScheme.outlineVariant,
-                                    MaterialTheme.shapes.large
-                                )
-                                .background(Color.White)
-                                .padding(8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.placeholder_qr),
-                                contentDescription = "Merchant QR Code",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Fit
-                            )
-                        }
-
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        Text(
-                            text = "Scan with any QR Ph-supported app",
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                            color = qrTheme.secondaryTextColor
-                        )
+                        when {
+                            isComplete -> {
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = "Order Submitted",
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color(0xFF4CAF50)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = "Your payment was reported and is awaiting staff verification.",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        textAlign = TextAlign.Center,
+                                        color = qrTheme.secondaryTextColor
+                                    )
+                                }
+                            }
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                            isSubmitting -> {
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(48.dp),
+                                        color = qrTheme.accentColor
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "Submitting your order...",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = qrTheme.secondaryTextColor
+                                    )
+                                }
+                            }
 
-                        // Supported apps — M3 SuggestionChips
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            listOf("GCash", "Maya", "BPI", "BDO", "UnionBank").forEach { app ->
-                                SuggestionChip(
-                                    onClick = { },
-                                    label = {
-                                        Text(
-                                            text = app,
-                                            style = MaterialTheme.typography.labelSmall
+                            errorMessage != null -> {
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = "Unable to submit order",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = errorMessage,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        textAlign = TextAlign.Center,
+                                        color = qrTheme.secondaryTextColor
+                                    )
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                    Button(
+                                        onClick = { reportPaidOnce() },
+                                        enabled = !actionPending
+                                    ) {
+                                        Text("TRY AGAIN")
+                                    }
+                                }
+                            }
+
+                            else -> {
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(230.dp)
+                                            .clip(MaterialTheme.shapes.large)
+                                            .border(
+                                                2.dp,
+                                                MaterialTheme.colorScheme.outlineVariant,
+                                                MaterialTheme.shapes.large
+                                            )
+                                            .background(Color.White)
+                                            .padding(8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                            painter = painterResource(R.drawable.merchant_qr),
+                                            contentDescription = "Merchant GCash QR code",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Fit
                                         )
-                                    },
-                                    modifier = Modifier.padding(horizontal = 2.dp),
-                                    shape = MaterialTheme.shapes.small,
-                                    colors = SuggestionChipDefaults.suggestionChipColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    ),
-                                    border = null
-                                )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = "Scan with GCash and enter the amount shown below.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        textAlign = TextAlign.Center,
+                                        color = qrTheme.secondaryTextColor
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Button(
+                                        onClick = { reportPaidOnce() },
+                                        modifier = Modifier
+                                            .fillMaxWidth(0.85f)
+                                            .height(52.dp),
+                                        shape = MaterialTheme.shapes.large,
+                                        enabled = !actionPending
+                                    ) {
+                                        Text(
+                                            text = "I'VE PAID",
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "This records your report; staff will verify the payment.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        textAlign = TextAlign.Center,
+                                        color = qrTheme.secondaryTextColor
+                                    )
+                                }
                             }
                         }
-
-                        Spacer(modifier = Modifier.height(20.dp))
 
                         HorizontalDivider(color = qrTheme.outlineVariantColor)
 
@@ -534,12 +637,36 @@ fun QRPaymentOverlay(
 @Composable
 fun CounterPaymentOverlay(
     order: Order,
+    isSubmitting: Boolean,
+    isComplete: Boolean,
+    errorMessage: String? = null,
+    onSubmit: () -> Unit,
     onDismiss: () -> Unit
 ) {
     var isVisible by remember { mutableStateOf(false) }
+    var actionPending by remember(order.id) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { isVisible = true }
+
+    LaunchedEffect(isComplete) {
+        if (isComplete) {
+            delay(1500)
+            isVisible = false
+            delay(250)
+            onDismiss()
+        }
+    }
+
+    LaunchedEffect(isSubmitting, isComplete, errorMessage) {
+        if (!isSubmitting && !isComplete && errorMessage != null) actionPending = false
+    }
+
+    fun submitOnce() {
+        if (actionPending || isSubmitting || isComplete) return
+        actionPending = true
+        onSubmit()
+    }
 
     fun animatedDismiss() {
         scope.launch {
@@ -616,7 +743,10 @@ fun CounterPaymentOverlay(
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.ExtraBold
                             )
-                            IconButton(onClick = { animatedDismiss() }) {
+                            IconButton(
+                                onClick = { animatedDismiss() },
+                                enabled = !isSubmitting && !actionPending
+                            ) {
                                 Icon(Icons.Default.Close, contentDescription = "Close")
                             }
                         }
@@ -682,13 +812,38 @@ fun CounterPaymentOverlay(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        Text(
-                            text = "Please proceed to the counter\nto complete your payment",
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                            color = counterTheme.secondaryTextColor,
-                            lineHeight = 24.sp
-                        )
+                        when {
+                            isComplete -> Text(
+                                text = "Order submitted. Please proceed to the counter.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center,
+                                color = Color(0xFF4CAF50)
+                            )
+                            isSubmitting -> CircularProgressIndicator(
+                                color = counterTheme.accentColor
+                            )
+                            else -> {
+                                Text(
+                                    text = errorMessage
+                                        ?: "Submit the order, then proceed to the counter to complete payment.",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textAlign = TextAlign.Center,
+                                    color = if (errorMessage == null) {
+                                        counterTheme.secondaryTextColor
+                                    } else {
+                                        MaterialTheme.colorScheme.error
+                                    },
+                                    lineHeight = 24.sp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { submitOnce() },
+                                    enabled = !actionPending
+                                ) {
+                                    Text(if (errorMessage == null) "SUBMIT ORDER" else "TRY AGAIN")
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -9,7 +9,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -110,7 +109,8 @@ fun AdminPinDialog(
     // Lockout countdown timer
     LaunchedEffect(isLockedOut) {
         while (pinManager.isLockedOut()) {
-            lockoutRemainingSeconds = (pinManager.remainingLockoutMs() / 1000).toInt() + 1
+            lockoutRemainingSeconds =
+                ((pinManager.remainingLockoutMs() + 999L) / 1000L).toInt()
             isLockedOut = true
             delay(1000L)
         }
@@ -149,7 +149,7 @@ fun AdminPinDialog(
             onPinFailed()
             errorMessage = if (pinManager.isLockedOut()) {
                 isLockedOut = true
-                "Too many attempts. Locked for 30s."
+                "Too many attempts. Locked for 60s."
             } else {
                 val remaining = PinManager.MAX_ATTEMPTS - pinManager.failedAttempts
                 "Wrong PIN. $remaining attempt${if (remaining != 1) "s" else ""} left."
@@ -174,7 +174,6 @@ fun AdminPinDialog(
         scope.launch {
             isVisible = false
             delay(200)
-            pinManager.resetAttempts()
             onDismiss()
         }
     }
@@ -261,7 +260,7 @@ fun AdminPinDialog(
                         Text(
                             text = "Admin Authentication",
                             style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             textAlign = TextAlign.Center
                         )
 
@@ -300,7 +299,7 @@ fun AdminPinDialog(
                                     text = "Locked out. Retry in ${lockoutRemainingSeconds}s",
                                     color = pinTheme.onErrorContainer,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                             Spacer(modifier = Modifier.height(16.dp))
@@ -385,7 +384,7 @@ fun AdminPinDialog(
                             ) {
                                 Text(
                                     "Unlock",
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.SemiBold,
                                     style = MaterialTheme.typography.labelLarge
                                 )
                             }

@@ -1,21 +1,36 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Gradle and generated build output
+.gradle/
+**/build/
+
+# Local Android configuration
 local.properties
+captures/
+.externalNativeBuild/
+.cxx/
 
+# Android Studio / IntelliJ
+.idea/
+*.iml
 
-# Firebase / signing secrets
-app/google-services.json
+# Local coding-agent metadata
+.agents/
+.codex/
+.kilo/
+.kilocode/
+
+# Firebase configuration and signing credentials
+**/google-services.json
 keystore.properties
-release-keystore.jks
+*.jks
+*.keystore
+
+# Firebase Emulator and Node test output
+firebase-tests/node_modules/
+firebase-tests/*-debug.log
+firebase-debug.log
+database-debug.log
+
+# OS and diagnostic files
+.DS_Store
+Thumbs.db
+*.hprof

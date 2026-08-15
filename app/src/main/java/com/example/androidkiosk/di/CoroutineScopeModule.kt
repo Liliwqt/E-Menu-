@@ -11,12 +11,10 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-@Suppress("unused") // Consumed by Hilt at compile time
 object CoroutineScopeModule {
 
     @Provides
     @Singleton
-    @Suppress("unused") // Consumed by Hilt at compile time
     fun provideApplicationScope(): CoroutineScope {
         return CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }

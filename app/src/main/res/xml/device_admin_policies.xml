@@ -1,13 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
-    <!--
-        Security hardening: wipe-data and reset-password removed.
-        A kiosk app should not need these dangerous capabilities.
-        If the admin PIN is compromised, an attacker could otherwise
-        trigger a full device wipe or reset the device password.
-    -->
-    <uses-policies>
-        <force-lock />
-        <disable-camera />
-    </uses-policies>
+    <!-- Device-owner lock-task APIs do not require legacy device-admin policies. -->
+    <uses-policies />
 </device-admin>

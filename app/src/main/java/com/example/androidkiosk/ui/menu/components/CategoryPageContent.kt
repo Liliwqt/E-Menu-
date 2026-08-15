@@ -50,12 +50,14 @@ fun CategoryPageContent(
                 .fillMaxWidth()
                 .padding(horizontal = 4.dp),
             shape = MaterialTheme.shapes.medium,
-            borderWidth = 1.dp
+            borderWidth = 1.dp,
+            elevation = 1.dp,
+            useTonalSurface = true
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Row(
@@ -66,12 +68,12 @@ fun CategoryPageContent(
                         imageVector = categoryIcon(category.categoryName),
                         contentDescription = null,
                         tint = catTheme.accentColor,
-                        modifier = Modifier.height(28.dp)
+                        modifier = Modifier.height(24.dp)
                     )
                     Text(
                         text = category.categoryName,
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = catTheme.primaryTextColor
                     )
                 }
@@ -99,7 +101,8 @@ fun CategoryPageContent(
                     Text(
                         text = "No items available",
                         color = catTheme.secondaryTextColor,
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }

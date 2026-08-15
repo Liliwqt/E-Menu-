@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Security hardening: Exclude all app data from cloud backup
-    and device-to-device transfer. Encrypted PIN data, cached menu
+    and device-to-device transfer. PIN throttle state, cached menu
     items, and Firebase credentials should not leave the device.
 -->
 <data-extraction-rules>

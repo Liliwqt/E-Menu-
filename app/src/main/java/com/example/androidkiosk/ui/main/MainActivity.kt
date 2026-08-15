@@ -1,6 +1,7 @@
 package com.example.androidkiosk.ui.main
 
 import android.os.Bundle
+import android.content.pm.ApplicationInfo
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -21,10 +22,13 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.androidkiosk.admin.KioskManager
+import com.example.androidkiosk.admin.KioskReleaseGate
 import com.example.androidkiosk.admin.PinManager
 import com.example.androidkiosk.admin.UnlockAttemptLogger
+import com.example.androidkiosk.admin.UnlockMethod
 import com.example.androidkiosk.ui.menu.MenuScreen
 import com.example.androidkiosk.ui.menu.MenuViewModel
+import com.example.androidkiosk.ui.menu.components.KioskProvisioningRequiredScreen
 import com.example.androidkiosk.ui.theme.AndroidKioskTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +47,7 @@ class MainActivity : ComponentActivity() {
 
     /** Whether the device is currently unlocked by admin. */
     private val isAdminUnlocked = MutableStateFlow(false)
+    private val unlockMethod = MutableStateFlow(UnlockMethod.VOLUME_BUTTON)
 
     // Volume Up long-press detection via Handler
     private val handler = Handler(Looper.getMainLooper())
@@ -66,8 +71,7 @@ class MainActivity : ComponentActivity() {
         hideSystemBars()
         enableEdgeToEdge()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        // FLAG_SECURE temporarily disabled — re-enable before production
-        // window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
 
         // Block back gesture/button in kiosk mode using the modern OnBackPressedDispatcher.
         // The callback is always enabled; it selectively allows back only when admin-unlocked.
@@ -98,6 +102,14 @@ class MainActivity : ComponentActivity() {
             val appSettings by viewModel.appSettings.collectAsState()
             val showPin by showPinDialog.collectAsState()
             val adminUnlocked by isAdminUnlocked.collectAsState()
+            val currentUnlockMethod by unlockMethod.collectAsState()
+            val kioskStatus by kioskManager.enforcementStatus.collectAsState()
+            val isDebuggable = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+            val releaseKioskBlocked = KioskReleaseGate.isOrderingBlocked(
+                isDebuggable = isDebuggable,
+                isAdminUnlocked = adminUnlocked,
+                status = kioskStatus
+            )
 
             // Determine if reduced motion accessibility setting is enabled
             val reducedMotion = getReducedMotionPreference()
@@ -111,10 +123,13 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MenuScreen(
+                    if (releaseKioskBlocked) {
+                        KioskProvisioningRequiredScreen(kioskStatus.name)
+                    } else MenuScreen(
                         viewModel = viewModel,
                         showPinDialog = showPin,
                         isAdminUnlocked = adminUnlocked,
+                        unlockMethod = currentUnlockMethod,
                         pinManager = pinManager,
                         onPinDialogDismiss = {
                             showPinDialog.value = false
@@ -135,7 +150,8 @@ class MainActivity : ComponentActivity() {
                             hideSystemBars()
                             Timber.i("Device re-locked by admin")
                         },
-                        onPinDialogRequest = {
+                        onPinDialogRequest = { method ->
+                            unlockMethod.value = method
                             showPinDialog.value = true
                         },
                         onPinFailed = { method ->
@@ -172,6 +188,7 @@ class MainActivity : ComponentActivity() {
             // Schedule the long-press trigger
             volumeUpLongPressRunnable = Runnable {
                 Timber.i("Volume Up long press detected — showing PIN dialog")
+                unlockMethod.value = UnlockMethod.VOLUME_BUTTON
                 showPinDialog.value = true
             }
             handler.postDelayed(volumeUpLongPressRunnable!!, VOLUME_LONG_PRESS_DURATION_MS)

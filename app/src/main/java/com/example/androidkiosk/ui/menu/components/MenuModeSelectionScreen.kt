@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.ViewCarousel
@@ -81,7 +80,7 @@ fun MenuModeSelectionScreen(
                     Text(
                         text = "Welcome",
                         style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.ExtraBold,
+                        fontWeight = FontWeight.SemiBold,
                         color = theme.primaryTextColor
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -197,13 +196,14 @@ private fun ModeCard(
                 onClick = onClick
             ),
         shape = MaterialTheme.shapes.extraLarge,
-        elevation = 4.dp,
-        borderWidth = 1.dp
+            elevation = 2.dp,
+            borderWidth = 1.dp,
+            useTonalSurface = true
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(32.dp),
+                    .padding(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -226,7 +226,7 @@ private fun ModeCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 color = theme.primaryTextColor,
                 textAlign = TextAlign.Center
             )
