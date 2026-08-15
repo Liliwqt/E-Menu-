@@ -1,0 +1,36 @@
+# Gradle and generated build output
+.gradle/
+**/build/
+
+# Local Android configuration
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+
+# Local coding-agent metadata
+.agents/
+.codex/
+.kilo/
+.kilocode/
+
+# Firebase configuration and signing credentials
+**/google-services.json
+keystore.properties
+*.jks
+*.keystore
+
+# Firebase Emulator and Node test output
+firebase-tests/node_modules/
+firebase-tests/*-debug.log
+firebase-debug.log
+database-debug.log
+
+# OS and diagnostic files
+.DS_Store
+Thumbs.db
+*.hprof

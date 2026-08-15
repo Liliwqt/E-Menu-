@@ -1,0 +1,23 @@
+{
+  "project_info": {
+    "project_number": "123456789000",
+    "project_id": "demo-menu-kiosk",
+    "storage_bucket": "demo-menu-kiosk.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:123456789000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.example.androidkiosk"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "CI_ONLY_NOT_A_REAL_FIREBASE_API_KEY"
+        }
+      ]
+    }
+  ],
+  "configuration_version": "1"
+}
