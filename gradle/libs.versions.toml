@@ -12,7 +12,7 @@ firebaseBom = "34.8.0"
 coroutinesPlayServices = "1.10.2"
 
 # Professional Stack
-hilt = "2.59.1"
+hilt = "2.60.1"
 ksp = "2.3.9"
 kotlinxSerialization = "1.8.1"
 room = "2.7.1"
